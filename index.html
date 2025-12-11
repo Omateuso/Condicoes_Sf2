@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Condições Pathfinder 2e</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        cyber: {
+                            dark: '#05010d', 
+                            purple: '#b026ff', 
+                            pink: '#ff00ff', 
+                            cyan: '#00f3ff', 
+                            panel: '#130821', 
+                            border: '#2a1a40'
+                        },
+                        print: {
+                            bg: '#ffffff',
+                            text: '#1a1a1a',
+                            border: '#000000'
+                        }
+                    },
+                    fontFamily: {
+                        display: ['Orbitron', 'sans-serif'],
+                        body: ['Rajdhani', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'neon-purple': '0 0 5px theme("colors.cyber.purple"), 0 0 10px theme("colors.cyber.purple")',
+                        'neon-cyan': '0 0 5px theme("colors.cyber.cyan"), 0 0 10px theme("colors.cyber.cyan")',
+                        'card-glow': '0 0 15px rgba(176, 38, 255, 0.15), inset 0 0 10px rgba(176, 38, 255, 0.05)',
+                    },
+                    screens: {
+                        'print': {'raw': 'print'},
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Base Styles - Screen Mode */
+        body {
+            background-color: #05010d;
+            background-image: 
+                radial-gradient(circle at 50% 0%, #2a0a40 0%, transparent 50%),
+                linear-gradient(0deg, transparent 24%, rgba(0, 243, 255, .03) 25%, rgba(0, 243, 255, .03) 26%, transparent 27%, transparent 74%, rgba(0, 243, 255, .03) 75%, rgba(0, 243, 255, .03) 76%, transparent 77%, transparent),
+                linear-gradient(90deg, transparent 24%, rgba(0, 243, 255, .03) 25%, rgba(0, 243, 255, .03) 26%, transparent 27%, transparent 74%, rgba(0, 243, 255, .03) 75%, rgba(0, 243, 255, .03) 76%, transparent 77%, transparent);
+            background-size: 100% 100%, 50px 50px, 50px 50px;
+            transition: background 0.3s;
+        }
+
+        /* Scrollbar customizada */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #05010d; 
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #b026ff; 
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ff00ff; 
+        }
+
+        .cyber-card {
+            clip-path: polygon(
+                0 0, 
+                100% 0, 
+                100% calc(100% - 20px), 
+                calc(100% - 20px) 100%, 
+                0 100%
+            );
+            transition: all 0.3s ease;
+        }
+
+        .cyber-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0 20px rgba(176, 38, 255, 0.4);
+            border-color: #00f3ff;
+        }
+
+        /* Editor Mode Indicator */
+        .edit-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 243, 255, 0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s;
+            cursor: pointer;
+            z-index: 50;
+            backdrop-filter: blur(2px);
+        }
+        
+        body.edit-mode .card-img-container:hover .edit-overlay {
+            opacity: 1;
+        }
+
+        .glitch-text {
+            position: relative;
+        }
+        
+        .glitch-text::before,
+        .glitch-text::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .highlight-term {
+            color: #00f3ff;
+            font-weight: 600;
+        }
+
+        /* ---------------------------------------------------------
+           PRINT / CARD MODE STYLES
+           --------------------------------------------------------- */
+        
+        body.print-mode {
+            background: #e5e5e5;
+            color: #000;
+        }
+
+        body.print-mode .search-container {
+            /* Keep visible for filtering */
+        }
+        
+        body.print-mode .cyber-title {
+            color: #000;
+            text-shadow: none;
+            -webkit-text-fill-color: initial;
+            background: none;
+        }
+
+        /* The Card Container in Print Mode */
+        body.print-mode .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, 63mm);
+            justify-content: center;
+            gap: 4mm;
+        }
+
+        /* The Card Itself in Print Mode */
+        body.print-mode .cyber-card {
+            background: white;
+            border: 2px solid #000;
+            border-radius: 4px;
+            clip-path: none;
+            box-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+            color: black;
+            width: 63mm;
+            height: 88mm;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+            transform: none !important;
+            page-break-inside: avoid;
+            break-inside: avoid;
+        }
+
+        /* Stylized "Physical Card" Elements */
+        body.print-mode .cyber-card::before {
+            content: '';
+            position: absolute;
+            top: 2px; left: 2px; right: 2px; bottom: 2px;
+            border: 1px solid #b026ff;
+            border-radius: 2px;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        body.print-mode .card-deco-top,
+        body.print-mode .card-deco-btm, 
+        body.print-mode .card-id-badge {
+            display: none;
+        }
+
+        /* Print Header */
+        body.print-mode .card-header {
+            background: #130821;
+            color: white;
+            padding: 2px 4px;
+            border-bottom: 2px solid #b026ff;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            z-index: 20;
+        }
+
+        body.print-mode .card-header h2 {
+            font-size: 9pt;
+            line-height: 1.1;
+            margin: 0;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+        
+        /* Print Image Box */
+        body.print-mode .card-art-box {
+            height: 28mm; /* Reduced height slightly to fit more text */
+            background: #000;
+            border-bottom: 2px solid #00f3ff;
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        
+        body.print-mode .card-art-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        /* Print Body */
+        body.print-mode .card-body {
+            padding: 4px 6px;
+            font-size: 5.5pt; /* Smaller font to fit full text */
+            line-height: 1.2;
+            color: #1a1a1a;
+            flex-grow: 1;
+            overflow: hidden;
+            background:
+                repeating-linear-gradient(
+                    45deg,
+                    transparent,
+                    transparent 10px,
+                    rgba(176, 38, 255, 0.03) 10px,
+                    rgba(176, 38, 255, 0.03) 20px
+                );
+            text-align: justify;
+        }
+
+        body.print-mode .card-body .highlight-term {
+            color: #6d00b0;
+        }
+
+        /* Print Footer */
+        body.print-mode .card-footer {
+            background: #eee;
+            border-top: 1px solid #ccc;
+            padding: 2px 4px;
+            font-size: 5pt;
+            text-align: right;
+            color: #555;
+            height: 14px;
+            flex-shrink: 0;
+        }
+
+        /* Printer Specifics */
+        @media print {
+            @page {
+                size: A4;
+                margin: 0.5cm;
+            }
+            body {
+                background: white !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .grid-container {
+                gap: 2mm !important;
+                grid-template-columns: repeat(3, 63mm) !important;
+            }
+            .cyber-card {
+                border: 1px dashed #999 !important;
+                box-shadow: none !important;
+                break-inside: avoid;
+            }
+        }
+    </style>
+</head>
+<body class="text-gray-300 font-body min-h-screen p-4 md:p-8">
+
+    <!-- Controls -->
+    <div class="max-w-7xl mx-auto flex flex-wrap justify-end gap-4 mb-4 no-print relative z-50">
+        <button onclick="toggleEditMode()" id="editBtn"
+            class="bg-cyber-dark border border-cyber-cyan text-cyber-cyan hover:bg-cyber-cyan hover:text-black px-4 py-2 font-display uppercase text-sm tracking-wider transition-all shadow-neon-cyan rounded">
+            <span id="editBtnText">ATIVAR EDIÇÃO DE IMAGENS</span>
+        </button>
+        <button onclick="togglePrintMode()" id="printBtn" 
+            class="bg-cyber-dark border border-cyber-purple text-cyber-purple hover:bg-cyber-purple hover:text-white px-4 py-2 font-display uppercase text-sm tracking-wider transition-all shadow-neon-purple rounded clip-corner">
+            <span id="btnText">VISUALIZAR CARTAS (IMPRESSÃO)</span>
+        </button>
+        <button onclick="window.print()" id="doPrintBtn" class="hidden bg-cyber-cyan text-black px-4 py-2 font-display uppercase text-sm font-bold tracking-wider hover:bg-white transition-all shadow-neon-cyan rounded">
+            IMPRIMIR (CTRL+P)
+        </button>
+        <button onclick="resetImages()" class="text-xs text-red-500 hover:text-red-400 underline ml-2">
+            Resetar Imagens
+        </button>
+    </div>
+
+    <!-- Header -->
+    <header class="max-w-7xl mx-auto mb-12 text-center relative z-10 no-print">
+        <div class="inline-block mb-4 relative">
+            <h1 class="cyber-title text-4xl md:text-6xl font-display font-black text-transparent bg-clip-text bg-gradient-to-r from-cyber-cyan via-white to-cyber-purple drop-shadow-[0_0_10px_rgba(0,243,255,0.5)] tracking-wider uppercase glitch-text" data-text="CONDITIONS_DB">
+                CONDITIONS_DB
+            </h1>
+            <div class="h-1 w-full bg-gradient-to-r from-transparent via-cyber-cyan to-transparent mt-2"></div>
+        </div>
+        <p class="text-cyber-purple font-display tracking-[0.2em] text-sm md:text-base uppercase opacity-80">
+            Pathfinder 2e Remaster // System Interface v2.2
+        </p>
+    </header>
+
+    <!-- Search -->
+    <div class="search-container max-w-7xl mx-auto mb-10 sticky top-4 z-40 no-print">
+        <div class="relative group">
+            <div class="absolute -inset-1 bg-gradient-to-r from-cyber-purple to-cyber-cyan rounded-lg blur opacity-40 group-hover:opacity-75 transition duration-500"></div>
+            <div class="relative flex items-center bg-cyber-dark border border-cyber-border rounded-lg p-1">
+                <svg class="w-6 h-6 ml-3 text-cyber-cyan" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                <input type="text" id="searchInput" placeholder="BUSCAR DADOS [ DIGITE O NOME DA CONDIÇÃO ]..." 
+                    class="w-full bg-transparent border-none focus:ring-0 text-white font-display uppercase tracking-wider placeholder-gray-600 h-12 px-4 print:text-black">
+            </div>
+        </div>
+    </div>
+
+    <!-- Grid Container -->
+    <div id="cardsGrid" class="grid-container max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 pb-20">
+        <!-- Cards injected here -->
+    </div>
+
+    <!-- Footer -->
+    <footer class="fixed bottom-0 left-0 w-full bg-cyber-dark/90 backdrop-blur border-t border-cyber-border py-2 text-center text-xs font-display text-gray-500 z-40 no-print">
+        SYSTEM STATUS: ONLINE // DATA SOURCE: PLAYER CORE
+    </footer>
+
+    <script>
+        const conditionsData = [
+            { 
+                id: "acelerado", 
+                title: "Acelerado (Quickened)", 
+                source: "Player Core pg. 439", 
+                content: "Você é capaz de agir mais rapidamente. Você ganha <span class='highlight-term'>1 ação adicional</span> no início do seu turno a cada rodada. Muitos efeitos que o deixam acelerado exigem que você use essa ação extra apenas de certas maneiras. Se você ficar acelerado por múltiplas fontes, você pode usar a ação extra concedida para qualquer ação única permitida por qualquer um dos efeitos que o tornaram acelerado. Como acelerado tem seu efeito no início do seu turno, você não ganha ações imediatamente se ficar acelerado durante o seu turno." 
+            },
+            { 
+                id: "agarrado", 
+                title: "Agarrado (Grabbed)", 
+                source: "Player Core pg. 437", 
+                content: "Você está sendo segurado por outra criatura, o que lhe confere as condições <span class='highlight-term'>desprevenido</span> e <span class='highlight-term'>imobilizado</span>. Se você tentar uma ação de manusear enquanto estiver agarrado, deve obter sucesso em um teste simples (flat check) CD 5 ou a ação é perdida; role o teste após gastar a ação, mas antes de aplicar quaisquer efeitos." 
+            },
+            { 
+                id: "amigavel", 
+                title: "Amigável (Friendly)", 
+                source: "Player Core pg. 437", 
+                content: "Esta condição reflete a disposição de uma criatura em relação a um personagem específico, e apenas efeitos sobrenaturais (como uma magia) podem impor essa condição a um PJ. Uma criatura que é amigável a um personagem gosta desse personagem. É provável que concorde com Solicitações desse personagem, desde que sejam simples, seguras e não custem muito para serem atendidas. Se o personagem (ou um de seus aliados) usar ações hostis contra a criatura, a criatura ganha uma condição de atitude pior, dependendo da gravidade da ação hostil, conforme determinado pelo GM." 
+            },
+            { 
+                id: "assustado", 
+                title: "Assustado (Frightened)", 
+                source: "Player Core pg. 437", 
+                content: "Você está tomado pelo medo e luta para controlar seus nervos. A condição assustado sempre inclui um valor. Você sofre uma <span class='highlight-term'>penalidade de status igual a este valor</span> em todos os seus testes e CDs. A menos que especificado de outra forma, no final de cada um dos seus turnos, o valor da sua condição assustado diminui em 1." 
+            },
+            { 
+                id: "atordoado", 
+                title: "Atordoado (Stunned)", 
+                source: "Player Core pg. 439", 
+                content: "Você perdeu os sentidos. <span class='highlight-term'>Você não pode agir.</span> Atordoado geralmente inclui um valor, que indica quantas ações totais você perde, possivelmente ao longo de vários turnos, por estar atordoado. Cada vez que você recuperar ações, reduza o número que você recupera pelo seu valor de atordoado, e então reduza seu valor de atordoado pelo número de ações que você perdeu. Atordoado substitui lento. Se a duração da sua condição atordoado terminar enquanto você estiver lento, conte as ações perdidas pela condição atordoado para aquelas perdidas por estar lento." 
+            },
+            { 
+                id: "a-deriva", 
+                title: "À Deriva (Untethered)", 
+                source: "Player Core pg. 441", 
+                content: "Você está em um ambiente de gravidade zero (ou similar) sem meios de movimento e flutua sem apoio. Você não pode realizar ações de movimento, a menos que especifiquem que podem ser usadas em seu ambiente atual. No final do seu turno, você se move 1,5 metros na última direção em que se moveu. Você pode realizar a ação <strong>Impulsionar-se</strong> para mudar de direção e a distância movida. Uma vez que você ganhe um meio de se mover em seu ambiente, você perde esta condição. Tipicamente, uma criatura com a condição à deriva em gravidade zero também ganha as condições <span class='highlight-term'>desajeitado 1</span> e <span class='highlight-term'>desprevenido</span> enquanto estiver à deriva." 
+            },
+            { 
+                id: "caido", 
+                title: "Caído (Prone)", 
+                source: "Player Core pg. 439", 
+                content: "Você está deitado no chão. Você está <span class='highlight-term'>desprevenido</span> e sofre uma penalidade de circunstância de –2 nas jogadas de ataque. As únicas ações de movimento que você pode usar enquanto está caído são Rastejar e Levantar-se. Levantar-se encerra a condição caído. Você pode Procurar Cobertura enquanto estiver caído para se abaixar e ganhar maior cobertura contra ataques à distância, mesmo se não tiver um objeto para se esconder atrás, o que lhe concede um bônus de circunstância de +4 na CA contra ataques à distância (mas você permanece desprevenido). Se você fosse derrubado enquanto estivesse Escalando ou Voando, você cai." 
+            },
+            { 
+                id: "cego", 
+                title: "Cego (Blinded)", 
+                source: "Player Core pg. 435", 
+                content: "Você não consegue ver. Todo terreno normal é terreno difícil para você. Você não consegue detectar nada usando a visão. Você falha criticamente automaticamente em testes de Percepção que exigem que você seja capaz de ver e, se a visão for seu único sentido preciso, você sofre uma penalidade de status de –4 em testes de Percepção. Você é imune a efeitos visuais. Cego substitui ofuscado." 
+            },
+            { 
+                id: "condenado", 
+                title: "Condenado (Doomed)", 
+                source: "Player Core pg. 436", 
+                content: "Sua alma foi agarrada por uma força poderosa que o chama para mais perto da morte. Condenado sempre inclui um valor. O valor de morrendo no qual você morre é reduzido pelo seu valor de condenado. Se o seu valor máximo de morrendo for reduzido a 0, você morre instantaneamente. Quando você morre, você não está mais condenado. Seu valor de condenado diminui em 1 cada vez que você tem uma noite completa de descanso." 
+            },
+            { 
+                id: "confuso", 
+                title: "Confuso (Confused)", 
+                source: "Player Core pg. 435", 
+                content: "Você não está em seu juízo perfeito e ataca selvagemente. Você está <span class='highlight-term'>desprevenido</span>, não trata ninguém como seu aliado e não pode adiar, preparar ou usar reações. Você usa todas as suas ações para Golpear ou conjurar truques mágicos ofensivos em alvos aleatórios (determinados pelo GM). Se for impossível atacar, você balbucia incoerentemente. Cada vez que você sofre dano de um ataque ou magia, você pode tentar um teste simples (flat check) CD 11 para se recuperar de sua confusão e encerrar a condição." 
+            },
+            { 
+                id: "controlado", 
+                title: "Controlado (Controlled)", 
+                source: "Player Core pg. 436", 
+                content: "Você foi comandado ou magicamente dominado, ou teve sua vontade subverted. O controlador dita como você age e pode fazer com que você use qualquer uma de suas ações, incluindo ataques, reações ou até mesmo Adiar. O controlador geralmente não precisa gastar suas próprias ações ao controlá-lo." 
+            },
+            { 
+                id: "dano-persistente", 
+                title: "Dano Persistente", 
+                source: "Player Core pg. 439", 
+                content: "Você está sofrendo dano de um efeito contínuo. Você sofre o dano no final de cada um dos seus turnos. Depois de sofrer dano persistente, role um teste simples (flat check) CD 15 para ver se você se recupera do dano persistente. Se tiver sucesso, a condição termina. Você ou um aliado podem usar Recuperação Assistida (geralmente 2 ações) para permitir um teste simples extra imediatamente (CD 15 ou CD 10 se a ajuda for particularmente apropriada)." 
+            },
+            { 
+                id: "desajeitado", 
+                title: "Desajeitado (Clumsy)", 
+                source: "Player Core pg. 435", 
+                content: "Seus movimentos tornam-se desajeitados e inexatos. Desajeitado sempre inclui um valor. Você sofre uma <span class='highlight-term'>penalidade de status igual ao valor da condição</span> em rolagens e CDs baseadas em Destreza, incluindo CA, testes de Reflexos, jogadas de ataque à distância e testes de perícia usando Acrobacia, Furtividade e Ladroagem." 
+            },
+            { 
+                id: "desprevenido", 
+                title: "Desprevenido (Off-Guard)", 
+                source: "Player Core pg. 438", 
+                content: "Você está distraído ou incapaz de focar toda a sua atenção na defesa. Você sofre uma <span class='highlight-term'>penalidade de circunstância de –2 na CA</span>. Alguns efeitos lhe dão a condição desprevenido apenas contra certas criaturas ou contra certos ataques. Outros — especialmente condições — podem deixá-lo desprevenido contra tudo." 
+            },
+            { 
+                id: "drenado", 
+                title: "Drenado (Drained)", 
+                source: "Player Core pg. 436", 
+                content: "Sua saúde e vitalidade foram esgotadas. Drenado sempre inclui um valor. Você sofre uma <span class='highlight-term'>penalidade de status igual ao seu valor de drenado</span> em rolagens e CDs baseadas em Constituição, como testes de Fortitude. Você também perde um número de Pontos de Vida igual ao seu nível (mínimo 1) vezes o valor de drenado, e seus Pontos de Vida máximos são reduzidos na mesma quantidade. Cada vez que você tem uma noite completa de descanso, seu valor de drenado diminui em 1." 
+            },
+            { 
+                id: "enfraquecido", 
+                title: "Enfraquecido (Enfeebled)", 
+                source: "Player Core pg. 436", 
+                content: "Você está fisicamente enfraquecido. Enfraquecido sempre inclui um valor. Quando você está enfraquecido, sofre uma <span class='highlight-term'>penalidade de status igual ao valor da condição</span> em rolagens e CDs baseadas em Força, incluindo jogadas de ataque corpo a corpo baseadas em Força, jogadas de dano baseadas em Força e testes de Atletismo." 
+            },
+            { 
+                id: "enjoado", 
+                title: "Enjoado (Sickened)", 
+                source: "Player Core pg. 439", 
+                content: "Você se sente mal. Enjoado sempre inclui um valor. Você sofre uma <span class='highlight-term'>penalidade de status igual a este valor</span> em todos os seus testes e CDs. Você não pode ingerir nada voluntariamente enquanto estiver enjoado. Você pode gastar uma única ação vomitando em uma tentativa de se recuperar, o que permite que você tente imediatamente um teste de Fortitude contra a CD do efeito que o deixou enjoado. Em um sucesso, você reduz seu valor de enjoado em 1." 
+            },
+            { 
+                id: "escondido", 
+                title: "Escondido (Hidden)", 
+                source: "Player Core pg. 437", 
+                content: "Enquanto você está escondido de uma criatura, essa criatura sabe o espaço em que você está, mas não consegue dizer exatamente onde você está. Uma criatura da qual você está escondido está <span class='highlight-term'>desprevenida</span> em relação a você, e deve obter sucesso em um teste simples (flat check) CD 11 ao mirar em você com um ataque, magia ou outro efeito, ou falha em afetá-lo. Efeitos de área não estão sujeitos a este teste simples." 
+            },
+            { 
+                id: "estupefato", 
+                title: "Estupefato (Stupefied)", 
+                source: "Player Core pg. 440", 
+                content: "Seus pensamentos e instintos estão nublados. Estupefato sempre inclui um valor. Você sofre uma <span class='highlight-term'>penalidade de status igual a este valor</span> em rolagens e CDs baseadas em Inteligência, Sabedoria e Carisma, incluindo testes de Vontade, modificadores de ataque de magia, CDs de magia e testes de perícia que usam esses modificadores. Sempre que você tentar Conjurar uma Magia enquanto estiver estupefato, a magia é interrompida a menos que você obtenha sucesso em um teste simples (flat check) com uma CD igual a 5 + seu valor de estupefato." 
+            },
+            { 
+                id: "falhando", 
+                title: "Falhando (Glitching)", 
+                source: "Player Core pg. 437", 
+                content: "A condição falhando sempre inclui um valor. Se você tiver equipamento falhando e realizar qualquer ação envolvendo esse equipamento, ou se você mesmo tiver a condição, deve tentar um teste simples (CD 5 + valor) no início do uso ou do turno. <br><strong>Sucesso:</strong> Age normalmente.<br><strong>Falha:</strong> Penalidade de item igual ao valor de falhando em testes e CDs.<br><strong>Falha Crítica:</strong> Objeto não funciona e perde ação; Criatura falhando usa efeito de falha e fica atordoada 1." 
+            },
+            { 
+                id: "fascinado", 
+                title: "Fascinado (Fascinated)", 
+                source: "Player Core pg. 437", 
+                content: "Você é compelido a focar sua atenção em algo. Você sofre uma penalidade de status de –2 em testes de Percepção e perícia, e não pode usar ações com o traço concentrar, a menos que elas estejam relacionadas ao objeto de sua fascinação. Esta condição termina se uma criatura usar ações hostis contra você ou qualquer um de seus aliados." 
+            },
+            { 
+                id: "fatigado", 
+                title: "Fatigado (Fatigued)", 
+                source: "Player Core pg. 437", 
+                content: "Você está cansado e não consegue reunir muita energia. Você sofre uma penalidade de status de –1 na CA e em testes de resistência. Você não pode usar atividades de exploração realizadas enquanto viaja. Você se recupera da fadiga após uma noite completa de descanso." 
+            },
+            { 
+                id: "ferido", 
+                title: "Ferido (Wounded)", 
+                source: "Player Core pg. 441", 
+                content: "Você foi gravemente ferido. Se você perder a condição morrendo e ainda não tiver a condição ferido, você se torna ferido 1. Se você já tiver a condição ferido quando perder a condição morrendo, o valor da sua condição ferido aumenta em 1. Se você ganhar a condição morrendo enquanto estiver ferido, aumente o valor da sua condição morrendo pelo seu valor de ferido. A condição ferido termina se alguém restaurar Pontos de Vida com sucesso para você usando Tratar Feridas, ou se você for restaurado ao máximo de Pontos de Vida por qualquer meio e descansar por 10 minutos." 
+            },
+            { 
+                id: "fugindo", 
+                title: "Fugindo (Fleeing)", 
+                source: "Player Core pg. 437", 
+                content: "Você é forçado a fugir. No seu turno, você deve gastar cada uma de suas ações tentando escapar da fonte da condição fugindo o mais rápido possível (como usando ações de movimento para fugir ou abrindo portas que barram sua fuga). Você não pode Adiar ou Preparar enquanto estiver fugindo." 
+            },
+            { 
+                id: "hostil", 
+                title: "Hostil (Hostile)", 
+                source: "Player Core pg. 437", 
+                content: "Esta condição reflete a disposição de uma criatura em relação a um personagem específico. Uma criatura hostil busca ativamente prejudicar esse personagem. Ela não necessariamente ataca, mas não aceitará Solicitações do personagem." 
+            },
+            { 
+                id: "imobilizado", 
+                title: "Imobilizado (Immobilized)", 
+                source: "Player Core pg. 437", 
+                content: "Você é incapaz de se mover. Você não pode usar quaisquer ações que tenham o traço movimento. Se você estiver imobilizado por algo que o segura no lugar e uma força externa o mover para fora do seu espaço, a força deve obter sucesso em um teste contra a CD do efeito que o segura no lugar." 
+            },
+            { 
+                id: "inamistoso", 
+                title: "Inamistoso (Unfriendly)", 
+                source: "Player Core pg. 441", 
+                content: "Esta condição reflete a disposição de uma criatura em relação a um personagem específico. Uma criatura que é inamistosa a um personagem não gosta e desconfia desse personagem. A criatura inamistosa não aceitará Solicitações do personagem." 
+            },
+            { 
+                id: "inconsciente", 
+                title: "Inconsciente (Unconscious)", 
+                source: "Player Core pg. 440", 
+                content: "Você está dormindo ou foi nocauteado. Você não pode agir. Você sofre uma penalidade de status de –4 na CA, Percepção e testes de Reflexos, e tem as condições <span class='highlight-term'>cego</span> e <span class='highlight-term'>desprevenido</span>. Quando ganha esta condição, você cai <span class='highlight-term'>caído</span> e larga itens. Se estiver com 0 PV mas não morrendo, acorda naturalmente. Se tiver mais de 1 PV, acorda se sofrer dano, receber cura, for sacudido ou com barulho alto (teste de Percepção)." 
+            },
+            { 
+                id: "indiferente", 
+                title: "Indiferente (Indifferent)", 
+                source: "Player Core pg. 438", 
+                content: "Esta condição reflete a disposição de uma criatura em relação a um personagem específico. Uma criatura que é indiferente a um personagem realmente não se importa de um jeito ou de outro com esse personagem. Assuma que a atitude de uma criatura é indiferente, a menos que especificado de outra forma." 
+            },
+            { 
+                id: "invisivel", 
+                title: "Invisível (Invisible)", 
+                source: "Player Core pg. 438", 
+                content: "Você não pode ser visto. Você está <span class='highlight-term'>não detectado</span> para todos. Criaturas podem Procurar para detectá-lo; se tiverem sucesso, você se torna escondido para elas até que se Furte novamente. Se você se tornar invisível enquanto alguém já pode vê-lo, você começa escondido para eles (em vez de não detectado) até que obtenha sucesso ao se Furtar." 
+            },
+            { 
+                id: "lento", 
+                title: "Lento (Slowed)", 
+                source: "Player Core pg. 439", 
+                content: "Você tem menos ações. Lento sempre inclui um valor. Quando você recuperar suas ações, reduza o número de ações recuperadas pelo seu valor de lento. Como você recupera ações no início do seu turno, você não perde ações imediatamente se ficar lento durante o seu turno." 
+            },
+            { 
+                id: "morrendo", 
+                title: "Morrendo (Dying)", 
+                source: "Player Core pg. 436", 
+                content: "Você está sangrando ou à beira da morte. Enquanto tiver esta condição, você está <span class='highlight-term'>inconsciente</span>. Morrendo sempre inclui um valor e, se chegar a morrendo 4, você morre. Você deve tentar um teste de recuperação no início do seu turno a cada rodada. Sua condição morrendo aumenta em 1 se sofrer dano, ou em 2 se for crítico. Se perder a condição morrendo, ganha <span class='highlight-term'>ferido 1</span>." 
+            },
+            { 
+                id: "nao-detectado", 
+                title: "Não Detectado (Undetected)", 
+                source: "Player Core pg. 441", 
+                content: "Quando você está não detectado por uma criatura, essa criatura não consegue vê-lo de forma alguma, não tem ideia de qual espaço você ocupa e não pode alvejá-lo. Essa criatura está <span class='highlight-term'>desprevenida</span> em relação a você. A criatura pode tentar adivinhar qual quadrado você está para atacar (teste simples e ataque secretos)." 
+            },
+            { 
+                id: "nao-notado", 
+                title: "Não Notado (Unnoticed)", 
+                source: "Player Core pg. 441", 
+                content: "Se você está não notado por uma criatura, essa criatura não tem ideia de que você está presente. Quando você está não notado, você também está <span class='highlight-term'>não detectado</span>. Isso importa para habilidades que podem ser usadas apenas contra alvos totalmente inconscientes da sua presença." 
+            },
+            { 
+                id: "observado", 
+                title: "Observado (Observed)", 
+                source: "Player Core pg. 438", 
+                content: "Qualquer coisa à vista está observada por você. Se uma criatura tomar medidas para evitar a detecção, como usando Furtividade para se Esconder, ela pode se tornar escondida ou não detectada em vez de observada. Você pode observar uma criatura apenas com seus sentidos precisos." 
+            },
+            { 
+                id: "ocultado", 
+                title: "Ocultado (Concealed)", 
+                source: "Player Core pg. 435", 
+                content: "Você é difícil de ser visto devido a neblina espessa ou característica obscurecedora. Você ainda pode ser observado, mas é mais difícil de ser alvejado. Uma criatura para a qual você está ocultado deve obter sucesso em um teste simples (flat check) CD 5 ao mirar em você. Se o teste falhar, você não é afetado. Efeitos de área não estão sujeitos a este teste simples." 
+            },
+            { 
+                id: "ofuscado", 
+                title: "Ofuscado (Dazzled)", 
+                source: "Player Core pg. 436", 
+                content: "Seus olhos estão superestimulados ou sua visão está turva. Se a visão for seu único sentido preciso, todas as criaturas e objetos estão <span class='highlight-term'>ocultados</span> para você." 
+            },
+            { 
+                id: "paralisado", 
+                title: "Paralisado (Paralyzed)", 
+                source: "Player Core pg. 438", 
+                content: "Você está congelado no lugar. Você tem a condição <span class='highlight-term'>desprevenido</span> e não pode agir, exceto para Recordar Conhecimento e usar ações que exijam apenas sua mente. Seus sentidos ainda funcionam, mas apenas nas áreas que você pode perceber sem se mover, então você não pode Procurar." 
+            },
+            { 
+                id: "petrificado", 
+                title: "Petrificado (Petrified)", 
+                source: "Player Core pg. 439", 
+                content: "Você foi transformado em pedra. Você não pode agir, nem pode sentir nada. Você se torna um objeto com um Volume dobro do normal, CA 9, Dureza 8 e os mesmos PV atuais. Se a estátua for destruída, você morre imediatamente. Você não envelhece nem percebe a passagem do tempo." 
+            },
+            { 
+                id: "prestativo", 
+                title: "Prestativo (Helpful)", 
+                source: "Player Core pg. 437", 
+                content: "Esta condição reflete a disposição de uma criatura em relação a um personagem específico. Uma criatura que é prestativa a um personagem deseja ajudar ativamente esse personagem. Ela aceitará Solicitações razoáveis desse personagem, desde que tais solicitações não sejam à custa dos objetivos ou qualidade de vida da criatura prestativa." 
+            },
+            { 
+                id: "quebrado", 
+                title: "Quebrado (Broken)", 
+                source: "Player Core pg. 435", 
+                content: "Quebrado é uma condição que afeta apenas objetos. Um objeto está quebrado quando o dano reduziu seus Pontos de Vida para igual ou menos que seu Limiar de Quebra. Um objeto quebrado não pode ser usado para sua função normal, nem concede bônus — com exceção de armadura. Armadura quebrada ainda concede seu bônus de item na CA, mas também impõe uma penalidade de status na CA dependendo de sua categoria (–1 leve, –2 média, –3 pesada)." 
+            },
+            { 
+                id: "restrito", 
+                title: "Restrito (Restrained)", 
+                source: "Player Core pg. 439", 
+                content: "Você está amarrado e mal consegue se mover, ou uma criatura o prendeu. Você tem as condições <span class='highlight-term'>desprevenido</span> e <span class='highlight-term'>imobilizado</span>, e não pode usar nenhuma ação de ataque ou manusear, exceto para tentar Escapar ou Forçar Abertura de suas amarras. Restrito substitui agarrado." 
+            },
+            { 
+                id: "sobrecarregado", 
+                title: "Sobrecarregado (Encumbered)", 
+                source: "Player Core pg. 436", 
+                content: "Você está carregando mais peso do que consegue gerenciar. Enquanto estiver sobrecarregado, você fica <span class='highlight-term'>desajeitado 1</span> e sofre uma penalidade de 3 metros (10 pés) em todos os seus Deslocamentos. Isso não pode reduzir seu Deslocamento para menos de 1,5 metros (5 pés)." 
+            },
+            { 
+                id: "suprimido", 
+                title: "Suprimido (Suppressed)", 
+                source: "Player Core pg. 440", 
+                content: "Você foi afetado por um alto volume de fogo recebido ou um ataque particularmente perigoso que o força a agir com menos eficiência para sua própria segurança. Você sofre uma penalidade de circunstância de –1 nas jogadas de ataque e uma penalidade de status de –3 metros (–10 pés) em todos os seus Deslocamentos." 
+            },
+            { 
+                id: "surdo", 
+                title: "Surdo (Deafened)", 
+                source: "Player Core pg. 436", 
+                content: "Você não consegue ouvir. Você falha criticamente automaticamente em testes de Percepção que exigem que você seja capaz de ouvir. Você sofre uma penalidade de status de –2 em testes de Percepção para iniciativa e testes que envolvem som. Se você realizar uma ação que tenha o traço auditivo, deve obter sucesso em um teste simples (flat check) CD 5 ou a ação é perdida. Você é imune a efeitos auditivos." 
+            }
+        ];
+
+        const grid = document.getElementById('cardsGrid');
+        const searchInput = document.getElementById('searchInput');
+        const printBtnText = document.getElementById('btnText');
+        const doPrintBtn = document.getElementById('doPrintBtn');
+        const editBtnText = document.getElementById('editBtnText');
+
+        // Load custom images from LocalStorage
+        let customImages = JSON.parse(localStorage.getItem('pf2e_cyber_images')) || {};
+
+        function saveImages() {
+            localStorage.setItem('pf2e_cyber_images', JSON.stringify(customImages));
+        }
+        
+        function resetImages() {
+            if(confirm("Deseja resetar todas as imagens personalizadas para o padrão?")) {
+                customImages = {};
+                saveImages();
+                renderCards(searchInput.value);
+            }
+        }
+
+        function toggleEditMode() {
+            document.body.classList.toggle('edit-mode');
+            const isEdit = document.body.classList.contains('edit-mode');
+            editBtnText.textContent = isEdit ? "SAIR DA EDIÇÃO" : "ATIVAR EDIÇÃO DE IMAGENS";
+            // Re-render to show/hide edit overlays properly if needed (css handles most)
+        }
+
+        function updateImage(id) {
+            if (!document.body.classList.contains('edit-mode')) return;
+            
+            const newUrl = prompt("Cole a URL da imagem para esta carta (ex: link do Pinterest/Imgur):");
+            if (newUrl) {
+                customImages[id] = newUrl;
+                saveImages();
+                renderCards(searchInput.value);
+            }
+        }
+
+        function togglePrintMode() {
+            document.body.classList.toggle('print-mode');
+            const isPrintMode = document.body.classList.contains('print-mode');
+            
+            printBtnText.textContent = isPrintMode ? "VOLTAR PARA VISUAL CYBER" : "VISUALIZAR CARTAS (IMPRESSÃO)";
+            doPrintBtn.classList.toggle('hidden');
+            renderCards(searchInput.value);
+        }
+
+        function renderCards(filter = "") {
+            grid.innerHTML = '';
+            const isPrintMode = document.body.classList.contains('print-mode');
+            
+            const filteredData = conditionsData.filter(item => 
+                item.title.toLowerCase().includes(filter.toLowerCase()) || 
+                item.content.toLowerCase().includes(filter.toLowerCase())
+            );
+
+            filteredData.forEach((item, index) => {
+                const card = document.createElement('div');
+                
+                const shortTitle = item.title.split('(')[0].trim();
+                const encodedTitle = encodeURIComponent(shortTitle);
+                
+                // Use custom image if available, else placeholder
+                const imgUrl = customImages[item.id] || `https://placehold.co/600x350/0f0518/00f3ff?text=${encodedTitle}&font=playfair-display`;
+
+                const decoTop = `<div class="card-deco-top absolute top-0 right-0 p-2 pointer-events-none z-10">
+                                <div class="w-16 h-1 bg-cyber-purple/30 group-hover:bg-cyber-purple transition-colors"></div>
+                              </div>`;
+                const decoBtm = `<div class="card-deco-btm absolute bottom-0 left-0 p-2 pointer-events-none z-10">
+                                <div class="w-8 h-1 bg-cyber-cyan/30 group-hover:bg-cyber-cyan transition-colors"></div>
+                              </div>`;
+                
+                // Edit Overlay
+                const editOverlay = `
+                    <div class="edit-overlay" onclick="updateImage('${item.id}')">
+                        <span class="bg-black/80 text-cyber-cyan px-2 py-1 rounded text-xs font-bold border border-cyber-cyan">MUDAR IMAGEM</span>
+                    </div>
+                `;
+
+                // Screen Layout
+                const screenContent = `
+                    ${decoTop}
+                    ${decoBtm}
+                    <div class="card-img-container relative h-40 w-[calc(100%+3rem)] -mx-6 -mt-6 mb-4 overflow-hidden border-b border-cyber-purple/20 group-hover:border-cyber-cyan/50 transition-colors">
+                         ${editOverlay}
+                         <img src="${imgUrl}" alt="${item.title}" class="w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700">
+                         <div class="absolute inset-0 bg-gradient-to-t from-cyber-panel to-transparent pointer-events-none"></div>
+                    </div>
+
+                    <div class="mb-2 flex justify-between items-start card-id-badge relative z-10">
+                        <span class="text-xs font-display text-cyber-cyan tracking-widest uppercase border border-cyber-cyan/30 px-2 py-0.5 rounded bg-cyber-cyan/5">
+                            ID: ${item.id.toUpperCase().substring(0, 4)}
+                        </span>
+                        <span class="text-[10px] text-gray-500 font-mono">${item.source}</span>
+                    </div>
+                    <h2 class="text-2xl font-display font-bold text-white mb-2 group-hover:text-cyber-purple transition-colors relative z-10">
+                        ${item.title}
+                    </h2>
+                    <div class="h-px w-full bg-gradient-to-r from-cyber-purple/50 to-transparent mb-4"></div>
+                    <p class="text-gray-400 text-base leading-relaxed flex-grow font-body relative z-10">
+                        ${item.content}
+                    </p>
+                `;
+
+                // Print Layout
+                const printContent = `
+                    <div class="card-header">
+                        <h2 class="font-display font-bold uppercase">${item.title}</h2>
+                    </div>
+                    <div class="card-art-box">
+                         <img src="${imgUrl}" alt="${item.title}">
+                    </div>
+                    <div class="card-body font-body">
+                        ${item.content}
+                    </div>
+                    <div class="card-footer font-mono uppercase tracking-wider">
+                        ${item.source} | ID: ${item.id.toUpperCase().substring(0,3)}
+                    </div>
+                `;
+
+                card.className = `cyber-card bg-cyber-panel border border-cyber-border p-6 flex flex-col h-full relative overflow-hidden group`;
+                
+                if (isPrintMode) {
+                   card.innerHTML = printContent;
+                } else {
+                   card.innerHTML = screenContent;
+                   card.style.animation = `fadeIn 0.5s ease-out ${index * 0.05}s both`;
+                }
+
+                grid.appendChild(card);
+            });
+
+            if (filteredData.length === 0) {
+                grid.innerHTML = `
+                    <div class="col-span-full text-center py-20 opacity-50">
+                        <h3 class="text-2xl font-display text-cyber-pink">NO DATA FOUND</h3>
+                        <p class="font-mono mt-2">Re-calibrate search parameters.</p>
+                    </div>
+                `;
+            }
+        }
+
+        const styleSheet = document.createElement("style");
+        styleSheet.innerText = `
+            @keyframes fadeIn {
+                from { opacity: 0; transform: translateY(20px); }
+                to { opacity: 1; transform: translateY(0); }
+            }
+        `;
+        document.head.appendChild(styleSheet);
+
+        searchInput.addEventListener('input', (e) => {
+            renderCards(e.target.value);
+        });
+
+        renderCards();
+
+    </script>
+</body>
+</html>
