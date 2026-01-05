@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Versos Starfinder 2e - Impressão</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Biblioteca para gerar PNG -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+    
+    <!-- Fontes -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Rajdhani:wght@400;600;700&family=Exo+2:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;600;700&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        sf: {
+                            primary: '#00eaff',
+                            secondary: '#7000ff',
+                            accent: '#ff0055',
+                            dark: '#0a1128'
+                        }
+                    },
+                    fontFamily: {
+                        orbitron: ['Orbitron', 'sans-serif'],
+                        rajdhani: ['Rajdhani', 'sans-serif'],
+                        exo: ['"Exo 2"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        :root {
+            /* Padrão TCG */
+            --card-w: 63.5mm;
+            --card-h: 88.9mm;
+            --print-gap: 2mm;
+            --print-cols: 3;
+            
+            /* Variáveis Visuais Starfinder */
+            --sf-primary: #00eaff;
+            --sf-secondary: #7000ff;
+            --sf-accent: #ff0055;
+        }
+
+        body {
+            background-color: #0f172a;
+            color: white;
+            min-height: 100vh;
+        }
+
+        /* Fundo Tecnológico */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: 
+                radial-gradient(circle at 15% 50%, rgba(112, 0, 255, 0.1), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(0, 234, 255, 0.1), transparent 25%);
+            z-index: -2;
+            pointer-events: none;
+        }
+
+        /* --- ESTILOS DA CARTA (Design Starfinder) --- */
+        .sf-card {
+            width: var(--card-w);
+            height: var(--card-h);
+            position: relative;
+            border-radius: 3.5mm; /* Proporcional ao tamanho físico */
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
+            /* Importante para impressão: garante cores exatas */
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            flex-shrink: 0;
+            transition: transform 0.2s;
+            border: 1px solid #333;
+        }
+
+        .sf-card:hover {
+            transform: scale(1.05);
+            z-index: 10;
+            box-shadow: 0 0 25px rgba(0, 234, 255, 0.4);
+            border-color: var(--sf-primary);
+        }
+
+        .sf-bg-img {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            object-fit: cover; z-index: 1;
+        }
+
+        .sf-overlay {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, rgba(10, 17, 40, 0.2) 0%, rgba(0, 0, 0, 0.95) 100%);
+            z-index: 2;
+        }
+
+        .sf-border {
+            position: absolute;
+            top: 4%; left: 4%; right: 4%; bottom: 4%;
+            border: 1px solid rgba(0, 234, 255, 0.3);
+            border-radius: 2.5mm;
+            z-index: 3;
+        }
+
+        .sf-border::before, .sf-border::after {
+            content: ''; position: absolute; width: 15%; height: 10%;
+            border: 1px solid var(--sf-primary);
+        }
+        .sf-border::before { top: -1px; left: -1px; border-bottom: none; border-right: none; border-radius: 2.5mm 0 0 0; }
+        .sf-border::after { bottom: -1px; right: -1px; border-top: none; border-left: none; border-radius: 0 0 2.5mm 0; }
+
+        .sf-content {
+            position: absolute; z-index: 4;
+            top: 0; left: 0; width: 100%; height: 100%;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: flex-start;
+            padding-top: 15%;
+        }
+
+        .sf-logo {
+            width: 60%;
+            height: auto;
+            object-fit: contain;
+            filter: drop-shadow(0 0 5px rgba(0, 234, 255, 0.4));
+            mix-blend-mode: screen; 
+            margin-bottom: auto; 
+        }
+
+        .sf-text-container {
+            margin-bottom: 20%;
+            display: flex; flex-direction: column; align-items: center;
+        }
+
+        .sf-text-small {
+            font-family: 'Exo 2', sans-serif;
+            font-size: 8px; /* Ajustado para mm */
+            color: rgba(255, 255, 255, 0.8);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            font-weight: 700;
+            margin-bottom: 2px;
+            /* REMOVIDA A BORDA INFERIOR */
+            /* border-bottom: 1px solid var(--sf-primary); */
+            padding-bottom: 1px;
+        }
+
+        .sf-text-large {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 16px; /* Ajustado para mm */
+            color: #fff;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            font-weight: 900;
+            text-shadow: 0 0 4px rgba(0, 234, 255, 0.8);
+        }
+
+        /* --- UI DO MODAL E GERAL --- */
+        .modal-overlay {
+            position: fixed; top: 0; left: 0; w-full; h-full;
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(5px);
+            z-index: 50;
+            display: flex; justify-content: center; align-items: center;
+        }
+
+        .modal-content {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            width: 90%; max-width: 500px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+
+        .layout-btn {
+            border: 1px solid #334155;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: #0f172a;
+        }
+        .layout-btn:hover { border-color: var(--sf-primary); }
+        .layout-btn.active { 
+            background: rgba(0, 234, 255, 0.1); 
+            border-color: var(--sf-primary); 
+            color: var(--sf-primary);
+            font-weight: bold;
+        }
+        
+        /* Grid de Visualização na Tela */
+        .screen-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(calc(var(--card-w) * 1.5), 1fr)); /* Zoom visual */
+            gap: 2rem;
+            justify-items: center;
+            padding: 2rem;
+        }
+        
+        /* Ajuste do tamanho visual na tela para não ficar minúsculo (mm em tela varia) */
+        .screen-view .sf-card {
+            /* Um pouco de zoom para visualização em tela, opcional */
+            transform-origin: center;
+            /* Se quiser tamanho "real" na tela, remova o scale no hover ou ajuste aqui */
+        }
+
+        /* --- IMPRESSÃO --- */
+        @media print {
+            @page {
+                size: A4;
+                margin: 10mm;
+            }
+            body {
+                background: white;
+                color: black;
+                display: block;
+            }
+            .no-print { display: none !important; }
+            
+            .print-container {
+                display: grid !important;
+                grid-template-columns: repeat(var(--print-cols), 1fr);
+                gap: var(--print-gap);
+                width: 100%;
+                justify-items: center;
+            }
+
+            .sf-card {
+                /* Remove efeitos de hover e sombras para impressão limpa */
+                box-shadow: none;
+                border: 1px solid #ccc; /* Borda leve de corte */
+                transform: none !important;
+                page-break-inside: avoid;
+            }
+            
+            /* Removemos o fundo preto de segurança para economizar tinta se a imagem falhar? 
+               Não, mantemos para garantir o sangramento visual correto */
+        }
+    </style>
+</head>
+<body class="screen-view">
+
+    <!-- MODAL DE CONFIGURAÇÃO DE IMPRESSÃO -->
+    <div id="printConfigModal" class="modal-overlay hidden no-print">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-6 border-b border-slate-700 pb-4">
+                <h2 class="text-xl font-orbitron text-sf-primary uppercase">Configurar Impressão</h2>
+                <button onclick="togglePrintModal()" class="text-2xl text-slate-400 hover:text-white">&times;</button>
+            </div>
+            
+            <div class="mb-6">
+                <span class="block text-sm text-slate-400 uppercase font-bold mb-3">Layout Padrão</span>
+                <div class="grid grid-cols-3 gap-3">
+                    <div class="layout-btn active" onclick="setPrintLayout('standard', this)">
+                        Padrão (3x3)
+                        <br><span class="text-xs opacity-70 font-sans">63x88mm</span>
+                    </div>
+                    <div class="layout-btn" onclick="setPrintLayout('mini', this)">
+                        Mini (4x4)
+                        <br><span class="text-xs opacity-70 font-sans">45x63mm</span>
+                    </div>
+                    <div class="layout-btn" onclick="setPrintLayout('tarot', this)">
+                        Tarot (2x2)
+                        <br><span class="text-xs opacity-70 font-sans">70x120mm</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <span class="block text-sm text-slate-400 uppercase font-bold mb-2">Espaçamento (Corte)</span>
+                <div class="flex items-center gap-4">
+                    <input type="range" id="gapRange" min="0" max="10" value="2" step="0.5" class="w-full accent-sf-primary h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer" oninput="updateGap(this.value)">
+                    <div class="text-right font-mono text-sf-primary w-16"><span id="gapValue">2</span>mm</div>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <span class="block text-sm text-slate-400 uppercase font-bold mb-2">Quantidade</span>
+                <div class="flex items-center gap-4">
+                    <input type="number" id="qtyInput" value="9" min="1" max="50" class="bg-slate-800 border border-slate-600 rounded p-2 w-20 text-center text-white" onchange="renderBacks()">
+                    <span class="text-xs text-slate-500">Cartas a serem geradas</span>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-8">
+                <button onclick="togglePrintModal()" class="px-4 py-2 border border-slate-600 rounded text-slate-300 hover:bg-slate-800 transition">Cancelar</button>
+                <button onclick="window.print(); togglePrintModal()" class="px-6 py-2 bg-sf-primary text-slate-900 font-bold font-rajdhani uppercase rounded hover:bg-cyan-300 shadow-lg shadow-cyan-500/20 transition">IMPRIMIR AGORA</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- NAVBAR -->
+    <div class="navbar no-print max-w-7xl mx-auto pt-6 px-6 mb-8">
+        <div class="bg-slate-800/50 backdrop-blur-md border border-white/10 rounded-xl p-4 flex flex-col md:flex-row justify-between items-center gap-4 shadow-2xl">
+            <div>
+                <h1 class="text-3xl font-bold uppercase tracking-wider font-orbitron">Verso <span class="text-sf-primary">Starfinder 2e</span></h1>
+                <p class="text-xs text-sf-secondary font-exo uppercase tracking-widest">Gerador de Folha de Impressão</p>
+            </div>
+
+            <div class="flex gap-4">
+                <button onclick="downloadPNG()" class="bg-slate-700 text-white px-4 py-3 rounded font-bold font-rajdhani uppercase hover:bg-slate-600 transition shadow-lg flex items-center gap-2 border border-slate-600" title="Baixar verso individual como PNG">
+                    <span class="text-lg">⬇</span> PNG
+                </button>
+
+                <button onclick="togglePrintModal()" class="bg-white text-slate-900 px-6 py-3 rounded font-bold font-rajdhani uppercase hover:bg-sf-primary transition shadow-lg flex items-center gap-2 group">
+                    <svg class="w-5 h-5 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    Configurar Impressão
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- GRID DE CARTAS -->
+    <div id="cardsGrid" class="print-container screen-grid max-w-7xl mx-auto">
+        <!-- As cartas serão geradas aqui pelo JS -->
+    </div>
+
+    <script>
+        const grid = document.getElementById('cardsGrid');
+        const printModal = document.getElementById('printConfigModal');
+        const gapValue = document.getElementById('gapValue');
+        const qtyInput = document.getElementById('qtyInput');
+
+        // Configuração Inicial
+        let currentConfig = {
+            qty: 9
+        };
+
+        function togglePrintModal() {
+            printModal.classList.toggle('hidden');
+        }
+
+        function updateGap(val) {
+            document.documentElement.style.setProperty('--print-gap', val + 'mm');
+            gapValue.textContent = val;
+        }
+
+        function setPrintLayout(layout, btnElement) {
+            document.querySelectorAll('.layout-btn').forEach(btn => btn.classList.remove('active'));
+            btnElement.classList.add('active');
+
+            const root = document.documentElement;
+            
+            switch(layout) {
+                case 'standard': // TCG 63x88mm
+                    root.style.setProperty('--card-w', '63.5mm');
+                    root.style.setProperty('--card-h', '88.9mm');
+                    root.style.setProperty('--print-cols', '3');
+                    qtyInput.value = 9;
+                    break;
+                case 'mini': // Mini USA 41x63mm aprox
+                    root.style.setProperty('--card-w', '45mm');
+                    root.style.setProperty('--card-h', '63mm');
+                    root.style.setProperty('--print-cols', '4');
+                    qtyInput.value = 16;
+                    break;
+                case 'tarot': // Tarot 70x120mm
+                    root.style.setProperty('--card-w', '70mm');
+                    root.style.setProperty('--card-h', '120mm');
+                    root.style.setProperty('--print-cols', '2');
+                    qtyInput.value = 4;
+                    break;
+            }
+            renderBacks();
+            currentConfig.qty = parseInt(qtyInput.value);
+            renderBacks();
+        }
+
+        function createCardHTML() {
+            // HTML do Verso da Carta
+            return `
+                <div class="sf-card">
+                    <!-- Imagem de Fundo (com fallback) -->
+                    <img src="img/Verso3.png" class="sf-bg-img" 
+                         onerror="this.src='https://placehold.co/300x420/1a1a1a/FFF?text=Fundo+Ausente'; this.style.opacity='0.3'">
+                    
+                    <div class="sf-overlay"></div>
+                    <div class="sf-border"></div>
+
+                    <div class="sf-content">
+                        <!-- Logo (com fallback) -->
+                        <img src="img/Logo.webp" class="sf-logo" 
+                             onerror="this.style.display='none'">
+
+                        <div class="sf-text-container">
+                            <span class="sf-text-small">CARTAS DE</span>
+                            <!-- TEXTO CORRIGIDO -->
+                            <span class="sf-text-large">CONDIÇÃO</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderBacks() {
+            grid.innerHTML = '';
+            const count = parseInt(qtyInput.value) || 9;
+            
+            for (let i = 0; i < count; i++) {
+                grid.innerHTML += createCardHTML();
+            }
+        }
+
+        // Função de Download PNG
+        function downloadPNG() {
+            const card = document.querySelector('.sf-card');
+            
+            if (!card) {
+                alert('Nenhuma carta encontrada para gerar a imagem.');
+                return;
+            }
+
+            // Feedback visual no botão
+            const btn = event.currentTarget;
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '⏳ ...';
+            btn.disabled = true;
+
+            html2canvas(card, {
+                scale: 3, // Alta resolução (aprox 300 DPI)
+                backgroundColor: null, // Preserva transparência se houver radius
+                useCORS: true, // Tenta lidar com imagens cross-origin
+                logging: false
+            }).then(canvas => {
+                const link = document.createElement('a');
+                link.download = 'Starfinder_Verso_Carta.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+                
+                // Restaura botão
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }).catch(err => {
+                console.error("Erro ao gerar PNG:", err);
+                alert('Erro ao gerar a imagem. \n\nDica: Se você estiver apenas abrindo o arquivo HTML (file://), o navegador bloqueia isso por segurança. Use o "Live Server" no VS Code ou suba para um servidor.');
+                
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            });
+        }
+
+        // Renderização Inicial
+        renderBacks();
+
+    </script>
+</body>
+</html>

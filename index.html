@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Condições PF2E - Multi-Estilos</title>
+    <title>Condições PF2E - Impressão Perfeita</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -31,33 +31,125 @@
 </head>
 <body class="screen-view" data-theme="boardgame">
 
-    <div class="navbar no-print flex flex-col gap-6 max-w-6xl mx-auto rounded-b-xl">
-        <div class="flex flex-col md:flex-row justify-between items-center w-full gap-4">
-            <div>
-                <h1 class="text-3xl font-bold uppercase tracking-wider font-[Teko]">Deck de Condições <span class="text-blue-400">PF2E</span></h1>
-                <p class="text-xs opacity-70 font-[Inter]">Visualizador & Gerador de Impressão</p>
+    <!-- MODAL DE CONFIGURAÇÃO DE IMPRESSÃO -->
+    <div id="printConfigModal" class="modal-overlay hidden no-print">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Configurar Impressão</h2>
+                <button onclick="togglePrintModal()" class="text-xl font-bold hover:text-red-500">&times;</button>
             </div>
-
-            <div class="flex gap-2 bg-black/20 p-1 rounded-lg flex-wrap justify-center">
-                <button onclick="setTheme('boardgame')" class="px-4 py-1 rounded text-sm font-bold hover:bg-white/20 transition text-white border border-white/30">Boardgame</button>
-                <button onclick="setTheme('cyberpunk')" class="px-4 py-1 rounded text-sm font-bold hover:bg-cyan-500/20 transition text-cyan-400 border border-cyan-500/30 font-[Orbitron]">Cyberpunk</button>
-                <button onclick="setTheme('classic')" class="px-4 py-1 rounded text-sm font-bold hover:bg-amber-900/40 transition text-amber-200 border border-amber-700 font-[Cinzel]">Clássico</button>
-            </div>
-        </div>
-
-        <div class="flex gap-4 w-full">
-            <input type="text" id="searchInput" 
-                class="px-4 py-2 rounded bg-black/30 border border-white/10 text-white placeholder-white/50 focus:outline-none focus:border-blue-400 flex-grow font-sans text-sm"
-                placeholder="Filtrar (ex: Cego)...">
             
-            <button onclick="window.print()" class="bg-white text-slate-900 px-6 py-2 rounded font-bold uppercase hover:bg-blue-50 transition shadow-lg flex items-center gap-2">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
-                Imprimir
-            </button>
+            <div class="config-group">
+                <span class="config-label">Modo de Impressão</span>
+                <div class="layout-btn-group mb-4">
+                    <button class="layout-btn active" id="btnSimple" onclick="setPrintMode('simple', this)">Apenas Frente</button>
+                    <button class="layout-btn" id="btnDuplex" onclick="setPrintMode('duplex', this)">Frente e Verso (Duplex)</button>
+                </div>
+
+                <div id="duplexWarning" class="hidden text-xs bg-yellow-100 text-yellow-800 p-2 rounded mb-4 border border-yellow-300">
+                    <strong>Atenção:</strong> O modo Duplex gera páginas alternadas. O verso é espelhado automaticamente e usa o tamanho total para sangria (bleed).
+                </div>
+
+                <span class="config-label">Layout da Página</span>
+                <div class="layout-btn-group">
+                    <div class="layout-btn active" onclick="setPrintLayout('standard', this)">Padrão (3x3)<br><span class="text-xs opacity-70">63x88mm</span></div>
+                    <div class="layout-btn" onclick="setPrintLayout('mini', this)">Mini (4x4)<br><span class="text-xs opacity-70">45x63mm</span></div>
+                    <div class="layout-btn" onclick="setPrintLayout('tarot', this)">Tarot (2x2)<br><span class="text-xs opacity-70">70x120mm</span></div>
+                </div>
+            </div>
+
+            <!-- CONTROLES DE DIMENSÃO E SANGRIA -->
+            <div class="config-group border-t border-b border-gray-700 py-4 my-4">
+                <span class="config-label">Ajuste Fino de Dimensões</span>
+                
+                <!-- Escala Geral (Afeta Frente e Verso) -->
+                <div class="mb-3">
+                    <div class="flex justify-between text-xs mb-1">
+                        <span>Escala do Verso (Tamanho Real)</span>
+                        <span id="scaleValueDisplay">100%</span>
+                    </div>
+                    <input type="range" id="scaleRange" min="80" max="120" value="100" class="w-full" oninput="updateDimensions(this.value, 'scale')">
+                </div>
+
+                <!-- Sangria (Reduz apenas a Frente) -->
+                <div>
+                    <div class="flex justify-between text-xs mb-1">
+                        <span>Margem de Sangria (Redução da Frente)</span>
+                        <span id="bleedValueDisplay">10mm</span>
+                    </div>
+                    <input type="range" id="bleedRange" min="0" max="20" value="10" step="0.5" class="w-full" oninput="updateDimensions(this.value, 'bleed')">
+                    <p class="text-[10px] text-gray-500 mt-1">Quanto maior este valor, menor será a frente em relação ao verso.</p>
+                </div>
+            </div>
+
+            <!-- ÁREA DE UPLOAD DE VERSO (Disponível apenas em Duplex) -->
+            <div class="config-group opacity-50 pointer-events-none transition-opacity duration-300" id="backImageSection">
+                <span class="config-label">Imagem do Verso (PNG/JPG)</span>
+                <div class="flex items-start gap-4">
+                    <div class="flex-grow">
+                        <label class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 mb-2 cursor-pointer">
+                            <span id="fileLabel">Escolher arquivo...</span>
+                            <input type="file" id="backImageInput" accept="image/png, image/jpeg" class="hidden">
+                        </label>
+                        <p class="text-xs text-gray-400">A imagem preencherá toda a área de sangria (maior que a frente).</p>
+                    </div>
+                    <!-- Preview Box -->
+                    <div id="backPreviewBox" class="hidden relative w-16 h-24 border border-gray-300 rounded bg-gray-100 flex items-center justify-center overflow-hidden group shadow-sm">
+                        <img id="backPreviewImg" class="w-full h-full object-cover">
+                        <button onclick="clearBackImage()" class="absolute inset-0 bg-red-500/80 text-white text-xs opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity font-bold">
+                            X
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="config-group">
+                <span class="config-label">Espaçamento entre Cartas (Gap)</span>
+                <input type="range" id="gapRange" min="0" max="10" value="0" step="0.5" class="w-full" oninput="updateGap(this.value)">
+                <div class="text-right text-sm text-gray-500"><span id="gapValue">0</span>mm</div>
+            </div>
+
+            <div class="flex justify-end gap-3 mt-6">
+                <button onclick="togglePrintModal()" class="px-4 py-2 border rounded hover:bg-gray-100">Cancelar</button>
+                <button onclick="prepareAndPrint()" class="px-6 py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 shadow-lg transition-colors">GERAR E IMPRIMIR</button>
+            </div>
         </div>
     </div>
 
-    <div id="cardsGrid" class="grid-container grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 mb-20 max-w-7xl">
+    <!-- AREA DE IMPRESSÃO (Oculta na tela, visível no print) -->
+    <div id="printArea" class="hidden print:block"></div>
+
+    <!-- AREA DE VISUALIZAÇÃO (Tela apenas) -->
+    <div id="screenArea" class="print:hidden">
+        <div class="navbar no-print flex flex-col gap-6 max-w-6xl mx-auto rounded-b-xl">
+            <div class="flex flex-col md:flex-row justify-between items-center w-full gap-4">
+                <div>
+                    <h1 class="text-3xl font-bold uppercase tracking-wider font-[Teko]">Deck de Condições <span class="text-blue-400">PF2E</span></h1>
+                    <p class="text-xs opacity-70 font-[Inter]">Visualizador & Gerador de Impressão</p>
+                </div>
+
+                <div class="flex gap-2 bg-black/20 p-1 rounded-lg flex-wrap justify-center">
+                    <button onclick="setTheme('boardgame')" class="px-4 py-1 rounded text-sm font-bold hover:bg-white/20 transition text-white border border-white/30">Boardgame</button>
+                    <button onclick="setTheme('cyberpunk')" class="px-4 py-1 rounded text-sm font-bold hover:bg-cyan-500/20 transition text-cyan-400 border border-cyan-500/30 font-[Orbitron]">Cyberpunk</button>
+                    <button onclick="setTheme('classic')" class="px-4 py-1 rounded text-sm font-bold hover:bg-amber-900/40 transition text-amber-200 border border-amber-700 font-[Cinzel]">Clássico</button>
+                </div>
+            </div>
+
+            <div class="flex gap-4 w-full">
+                <input type="text" id="searchInput" 
+                    class="px-4 py-2 rounded bg-black/30 border border-white/10 text-white placeholder-white/50 focus:outline-none focus:border-blue-400 flex-grow font-sans text-sm"
+                    placeholder="Filtrar (ex: Cego)...">
+                
+                <button onclick="togglePrintModal()" class="bg-white text-slate-900 px-6 py-2 rounded font-bold uppercase hover:bg-blue-50 transition shadow-lg flex items-center gap-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    Configurar Impressão
+                </button>
+            </div>
+        </div>
+
+        <div id="cardsGrid" class="grid-container grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8 mb-20 max-w-7xl">
+            <!-- Cards de tela injetados aqui -->
+        </div>
     </div>
 
     <script>
@@ -93,86 +185,224 @@
         }
 
         const conditionsData = [
-            { id: "acelerado", title: "Acelerado", sub: "Quickened", source: "Player Core pg. 439", content: "Você é capaz de agir mais rapidamente. Você ganha <span class='highlight-term'>1 ação adicional</span> no início do seu turno a cada rodada. Muitos efeitos que o deixam acelerado exigem que você use essa ação extra apenas de certas maneiras. Se você ficar acelerado por múltiplas fontes, você pode usar a ação extra concedida para qualquer ação única permitida por qualquer um dos efeitos que o tornaram acelerado. Como acelerado tem seu efeito no início do seu turno, você não ganha ações imediatamente se ficar acelerado durante o seu turno." },
-            { id: "agarrado", title: "Agarrado", sub: "Grabbed", source: "Player Core pg. 437", content: "Você está sendo segurado por outra criatura, o que lhe confere as condições <span class='highlight-term'>desprevenido</span> e <span class='highlight-term'>imobilizado</span>. Se você tentar uma ação de manusear enquanto estiver agarrado, deve obter sucesso em um teste simples (flat check) CD 5 ou a ação é perdida; role o teste após gastar a ação, mas antes de aplicar quaisquer efeitos." },
-            { id: "amigavel", title: "Amigável", sub: "Friendly", source: "Player Core pg. 437", content: "Esta condição reflete a disposição de uma criatura em relação a um personagem específico, e apenas efeitos sobrenaturais (como uma magia) podem impor essa condição a um PJ. Uma criatura que é amigável a um personagem gosta desse personagem. É provável que concorde com Solicitações desse personagem, desde que sejam simples, seguras e não custem muito para serem atendidas. Se o personagem (ou um de seus aliados) usar ações hostis contra a criatura, a criatura ganha uma condição de atitude pior, dependendo da gravidade da ação hostil, conforme determinado pelo GM." },
-            { id: "assustado", title: "Assustado", sub: "Frightened", source: "Player Core pg. 437", content: "Você está tomado pelo medo e luta para controlar seus nervos. A condição assustado sempre inclui um valor. Você sofre uma <span class='highlight-term'>penalidade de status igual a este valor</span> em todos os seus testes e CDs. A menos que especificado de outra forma, no final de cada um dos seus turnos, o valor da sua condição assustado diminui em 1." },
-            { id: "atordoado", title: "Atordoado", sub: "Stunned", source: "Player Core pg. 439", content: "Você perdeu os sentidos. <span class='highlight-term'>Você não pode agir.</span> Atordoado geralmente inclui um valor, que indica quantas ações totais você perde, possivelmente ao longo de vários turnos, por estar atordoado. Cada vez que você recuperar ações, reduza o número que você recupera pelo seu valor de atordoado, e então reduza seu valor de atordoado pelo número de ações que você perdeu. Atordoado substitui lento. Se a duração da sua condição atordoado terminar enquanto você estiver lento, conte as ações perdidas pela condição atordoado para aquelas perdidas por estar lento." },
-            { id: "a-deriva", title: "À Deriva", sub: "Untethered", source: "Player Core pg. 441", content: "Você está em um ambiente de gravidade zero (ou similar) sem meios de movimento e flutua sem apoio. Você não pode realizar ações de movimento, a menos que especifiquem que podem ser usadas em seu ambiente atual. No final do seu turno, você se move 1,5 metros na última direção em que se moveu. Você pode realizar a ação <strong>Impulsionar-se</strong> para mudar de direção e a distância movida. Uma vez que você ganhe um meio de se mover em seu ambiente, você perde esta condição. Tipicamente, uma criatura com a condição à deriva em gravidade zero também ganha as condições <span class='highlight-term'>desajeitado 1</span> e <span class='highlight-term'>desprevenido</span> enquanto estiver à deriva." },
-            { id: "caido", title: "Caído", sub: "Prone", source: "Player Core pg. 439", content: "Você está deitado no chão. Você está <span class='highlight-term'>desprevenido</span> e sofre uma penalidade de circunstância de –2 nas jogadas de ataque. As únicas ações de movimento que você pode usar enquanto está caído são Rastejar e Levantar-se. Levantar-se encerra a condição caído. Você pode Procurar Cobertura enquanto estiver caído para se abaixar e ganhar maior cobertura contra ataques à distância, mesmo se não tiver um objeto para se esconder atrás, o que lhe concede um bônus de circunstância de +4 na CA contra ataques à distância (mas você permanece desprevenido). Se você fosse derrubado enquanto estivesse Escalando ou Voando, você cai." },
-            { id: "cego", title: "Cego", sub: "Blinded", source: "Player Core pg. 435", content: "Você não consegue ver. Todo terreno normal é terreno difícil para você. Você não consegue detectar nada usando a visão. Você falha criticamente automaticamente em testes de Percepção que exigem que você seja capaz de ver e, se a visão for seu único sentido preciso, você sofre uma penalidade de status de –4 em testes de Percepção. Você é imune a efeitos visuais. Cego substitui ofuscado." },
-            { id: "condenado", title: "Condenado", sub: "Doomed", source: "Player Core pg. 436", content: "Sua alma foi agarrada por uma força poderosa que o chama para mais perto da morte. Condenado sempre inclui um valor. O valor de morrendo no qual você morre é reduzido pelo seu valor de condenado. Se o seu valor máximo de morrendo for reduzido a 0, você morre instantaneamente. Quando você morre, você não está mais condenado. Seu valor de condenado diminui em 1 cada vez que você tem uma noite completa de descanso." },
-            { id: "confuso", title: "Confuso", sub: "Confused", source: "Player Core pg. 435", content: "Você não está em seu juízo perfeito e ataca selvagemente. Você está <span class='highlight-term'>desprevenido</span>, não trata ninguém como seu aliado e não pode adiar, preparar ou usar reações. Você usa todas as suas ações para Golpear ou conjurar truques mágicos ofensivos em alvos aleatórios (determinados pelo GM). Se for impossível atacar, você balbucia incoerentemente. Cada vez que você sofre dano de um ataque ou magia, você pode tentar um teste simples (flat check) CD 11 para se recuperar de sua confusão e encerrar a condição." },
-            { id: "controlado", title: "Controlado", sub: "Controlled", source: "Player Core pg. 436", content: "Você foi comandado ou magicamente dominado, ou teve sua vontade subverted. O controlador dita como você age e pode fazer com que você use qualquer uma de suas ações, incluindo ataques, reações ou até mesmo Adiar. O controlador geralmente não precisa gastar suas próprias ações ao controlá-lo." },
-            { id: "dano-persistente", title: "Dano Persistente", sub: "Persistent Damage", source: "Player Core pg. 439", content: "Você está sofrendo dano de um efeito contínuo. Você sofre o dano no final de cada um dos seus turnos. Depois de sofrer dano persistente, role um teste simples (flat check) CD 15 para ver se você se recupera do dano persistente. Se tiver sucesso, a condição termina. Você ou um aliado podem usar Recuperação Assistida (geralmente 2 ações) para permitir um teste simples extra imediatamente (CD 15 ou CD 10 se a ajuda for particularmente apropriada)." },
-            { id: "desajeitado", title: "Desajeitado", sub: "Clumsy", source: "Player Core pg. 435", content: "Seus movimentos tornam-se desajeitados e inexatos. Desajeitado sempre inclui um valor. Você sofre uma <span class='highlight-term'>penalidade de status igual ao valor da condição</span> em rolagens e CDs baseadas em Destreza, incluindo CA, testes de Reflexos, jogadas de ataque à distância e testes de perícia usando Acrobacia, Furtividade e Ladroagem." },
-            { id: "desprevenido", title: "Desprevenido", sub: "Off-Guard", source: "Player Core pg. 438", content: "Você está distraído ou incapaz de focar toda a sua atenção na defesa. Você sofre uma <span class='highlight-term'>penalidade de circunstância de –2 na CA</span>. Alguns efeitos lhe dão a condição desprevenido apenas contra certas criaturas ou contra certos ataques. Outros — especialmente condições — podem deixá-lo desprevenido contra tudo." },
-            { id: "drenado", title: "Drenado", sub: "Drained", source: "Player Core pg. 436", content: "Sua saúde e vitalidade foram esgotadas. Drenado sempre inclui um valor. Você sofre uma <span class='highlight-term'>penalidade de status igual ao seu valor de drenado</span> em rolagens e CDs baseadas em Constituição, como testes de Fortitude. Você também perde um número de Pontos de Vida igual ao seu nível (mínimo 1) vezes o valor de drenado, e seus Pontos de Vida máximos são reduzidos na mesma quantidade. Cada vez que você tem uma noite completa de descanso, seu valor de drenado diminui em 1." },
-            { id: "enfraquecido", title: "Enfraquecido", sub: "Enfeebled", source: "Player Core pg. 436", content: "Você está fisicamente enfraquecido. Enfraquecido sempre inclui um valor. Quando você está enfraquecido, sofre uma <span class='highlight-term'>penalidade de status igual ao valor da condição</span> em rolagens e CDs baseadas em Força, incluindo jogadas de ataque corpo a corpo baseadas em Força, jogadas de dano baseadas em Força e testes de Atletismo." },
-            { id: "enjoado", title: "Enjoado", sub: "Sickened", source: "Player Core pg. 439", content: "Você se sente mal. Enjoado sempre inclui um valor. Você sofre uma <span class='highlight-term'>penalidade de status igual a este valor</span> em todos os seus testes e CDs. Você não pode ingerir nada voluntariamente enquanto estiver enjoado. Você pode gastar uma única ação vomitando em uma tentativa de se recuperar, o que permite que você tente imediatamente um teste de Fortitude contra a CD do efeito que o deixou enjoado. Em um sucesso, você reduz seu valor de enjoado em 1." },
-            { id: "escondido", title: "Escondido", sub: "Hidden", source: "Player Core pg. 437", content: "Enquanto você está escondido de uma criatura, essa criatura sabe o espaço em que você está, mas não consegue dizer exatamente onde você está. Uma criatura da qual você está escondido está <span class='highlight-term'>desprevenida</span> em relação a você, e deve obter sucesso em um teste simples (flat check) CD 11 ao mirar em você com um ataque, magia ou outro efeito, ou falha em afetá-lo. Efeitos de área não estão sujeitos a este teste simples." },
-            { id: "estupefato", title: "Estupefato", sub: "Stupefied", source: "Player Core pg. 440", content: "Seus pensamentos e instintos estão nublados. Estupefato sempre inclui um valor. Você sofre uma <span class='highlight-term'>penalidade de status igual a este valor</span> em rolagens e CDs baseadas em Inteligência, Sabedoria e Carisma, incluindo testes de Vontade, modificadores de ataque de magia, CDs de magia e testes de perícia que usam esses modificadores. Sempre que você tentar Conjurar uma Magia enquanto estiver estupefato, a magia é interrompida a menos que você obtenha sucesso em um teste simples (flat check) com uma CD igual a 5 + seu valor de estupefato." },
-            { id: "falhando", title: "Falhando", sub: "Glitching", source: "Player Core pg. 437", content: "A condição falhando sempre inclui um valor. Se você tiver equipamento falhando e realizar qualquer ação envolvendo esse equipamento, ou se você mesmo tiver a condição, deve tentar um teste simples (CD 5 + valor) no início do uso ou do turno. <br><strong>Sucesso:</strong> Age normalmente.<br><strong>Falha:</strong> Penalidade de item igual ao valor de falhando em testes e CDs.<br><strong>Falha Crítica:</strong> Objeto não funciona e perde ação; Criatura falhando usa efeito de falha e fica atordoada 1." },
-            { id: "fascinado", title: "Fascinado", sub: "Fascinated", source: "Player Core pg. 437", content: "Você é compelido a focar sua atenção em algo. Você sofre uma penalidade de status de –2 em testes de Percepção e perícia, e não pode usar ações com o traço concentrar, a menos que elas estejam relacionadas ao objeto de sua fascinação. Esta condição termina se uma criatura usar ações hostis contra você ou qualquer um de seus aliados." },
-            { id: "fatigado", title: "Fatigado", sub: "Fatigued", source: "Player Core pg. 437", content: "Você está cansado e não consegue reunir muita energia. Você sofre uma penalidade de status de –1 na CA e em testes de resistência. Você não pode usar atividades de exploração realizadas enquanto viaja. Você se recupera da fadiga após uma noite completa de descanso." },
-            { id: "ferido", title: "Ferido", sub: "Wounded", source: "Player Core pg. 441", content: "Você foi gravemente ferido. Se você perder a condição morrendo e ainda não tiver a condição ferido, você se torna ferido 1. Se você já tiver a condição ferido quando perder a condição morrendo, o valor da sua condição ferido aumenta em 1. Se você ganhar a condição morrendo enquanto estiver ferido, aumente o valor da sua condição morrendo pelo seu valor de ferido. A condição ferido termina se alguém restaurar Pontos de Vida com sucesso para você usando Tratar Feridas, ou se você for restaurado ao máximo de Pontos de Vida por qualquer meio e descansar por 10 minutos." },
-            { id: "fugindo", title: "Fugindo", sub: "Fleeing", source: "Player Core pg. 437", content: "Você é forçado a fugir. No seu turno, você deve gastar cada uma de suas ações tentando escapar da fonte da condição fugindo o mais rápido possível (como usando ações de movimento para fugir ou abrindo portas que barram sua fuga). Você não pode Adiar ou Preparar enquanto estiver fugindo." },
-            { id: "hostil", title: "Hostil", sub: "Hostile", source: "Player Core pg. 437", content: "Esta condição reflete a disposição de uma criatura em relação a um personagem específico. Uma criatura hostil busca ativamente prejudicar esse personagem. Ela não necessariamente ataca, mas não aceitará Solicitações do personagem." },
-            { id: "imobilizado", title: "Imobilizado", sub: "Immobilized", source: "Player Core pg. 437", content: "Você é incapaz de se mover. Você não pode usar quaisquer ações que tenham o traço movimento. Se você estiver imobilizado por algo que o segura no lugar e uma força externa o mover para fora do seu espaço, a força deve obter sucesso em um teste contra a CD do efeito que o segura no lugar." },
-            { id: "inamistoso", title: "Inamistoso", sub: "Unfriendly", source: "Player Core pg. 441", content: "Esta condição reflete a disposição de uma criatura em relação a um personagem específico. Uma criatura que é inamistosa a um personagem não gosta e desconfia desse personagem. A criatura inamistosa não aceitará Solicitações do personagem." },
-            { id: "inconsciente", title: "Inconsciente", sub: "Unconscious", source: "Player Core pg. 440", content: "Você está dormindo ou foi nocauteado. Você não pode agir. Você sofre uma penalidade de status de –4 na CA, Percepção e testes de Reflexos, e tem as condições <span class='highlight-term'>cego</span> e <span class='highlight-term'>desprevenido</span>. Quando ganha esta condição, você cai <span class='highlight-term'>caído</span> e larga itens. Se estiver com 0 PV mas não morrendo, acorda naturalmente. Se tiver mais de 1 PV, acorda se sofrer dano, receber cura, for sacudido ou com barulho alto (teste de Percepção)." },
-            { id: "indiferente", title: "Indiferente", sub: "Indifferent", source: "Player Core pg. 438", content: "Esta condição reflete a disposição de uma criatura em relação a um personagem específico. Uma criatura que é indiferente a um personagem realmente não se importa de um jeito ou de outro com esse personagem. Assuma que a atitude de uma criatura é indiferente, a menos que especificado de outra forma." },
-            { id: "invisivel", title: "Invisível", sub: "Invisible", source: "Player Core pg. 438", content: "Você não pode ser visto. Você está <span class='highlight-term'>não detectado</span> para todos. Criaturas podem Procurar para detectá-lo; se tiverem sucesso, você se torna escondido para elas até que se Furte novamente. Se você se tornar invisível enquanto alguém já pode vê-lo, você começa escondido para eles (em vez de não detectado) até que obtenha sucesso ao se Furtar." },
-            { id: "lento", title: "Lento", sub: "Slowed", source: "Player Core pg. 439", content: "Você tem menos ações. Lento sempre inclui um valor. Quando você recuperar suas ações, reduza o número de ações recuperadas pelo seu valor de lento. Como você recupera ações no início do seu turno, você não perde ações imediatamente se ficar lento durante o seu turno." },
-            { id: "morrendo", title: "Morrendo", sub: "Dying", source: "Player Core pg. 436", content: "Você está sangrando ou à beira da morte. Enquanto tiver esta condição, você está <span class='highlight-term'>inconsciente</span>. Morrendo sempre inclui um valor e, se chegar a morrendo 4, você morre. Você deve tentar um teste de recuperação no início do seu turno a cada rodada. Sua condição morrendo aumenta em 1 se sofrer dano, ou em 2 se for crítico. Se perder a condição morrendo, ganha <span class='highlight-term'>ferido 1</span>." },
-            { id: "nao-detectado", title: "Não Detectado", sub: "Undetected", source: "Player Core pg. 441", content: "Quando você está não detectado por uma criatura, essa criatura não consegue vê-lo de forma alguma, não tem ideia de qual espaço você ocupa e não pode alvejá-lo. Essa criatura está <span class='highlight-term'>desprevenida</span> em relação a você. A criatura pode tentar adivinhar qual quadrado você está para atacar (teste simples e ataque secretos)." },
-            { id: "nao-notado", title: "Não Notado", sub: "Unnoticed", source: "Player Core pg. 441", content: "Se você está não notado por uma criatura, essa criatura não tem ideia de que você está presente. Quando você está não notado, você também está <span class='highlight-term'>não detectado</span>. Isso importa para habilidades que podem ser usadas apenas contra alvos totalmente inconscientes da sua presença." },
-            { id: "observado", title: "Observado", sub: "Observed", source: "Player Core pg. 438", content: "Qualquer coisa à vista está observada por você. Se uma criatura tomar medidas para evitar a detecção, como usando Furtividade para se Esconder, ela pode se tornar escondida ou não detectada em vez de observada. Você pode observar uma criatura apenas com seus sentidos precisos." },
-            { id: "ocultado", title: "Ocultado", sub: "Concealed", source: "Player Core pg. 435", content: "Você é difícil de ser visto devido a neblina espessa ou característica obscurecedora. Você ainda pode ser observado, mas é mais difícil de ser alvejado. Uma criatura para a qual você está ocultado deve obter sucesso em um teste simples (flat check) CD 5 ao mirar em você. Se o teste falhar, você não é afetado. Efeitos de área não estão sujeitos a este teste simples." },
-            { id: "ofuscado", title: "Ofuscado", sub: "Dazzled", source: "Player Core pg. 436", content: "Seus olhos estão superestimulados ou sua visão está turva. Se a visão for seu único sentido preciso, todas as criaturas e objetos estão <span class='highlight-term'>ocultados</span> para você." },
-            { id: "paralisado", title: "Paralisado", sub: "Paralyzed", source: "Player Core pg. 438", content: "Você está congelado no lugar. Você tem a condição <span class='highlight-term'>desprevenido</span> e não pode agir, exceto para Recordar Conhecimento e usar ações que exijam apenas sua mente. Seus sentidos ainda funcionam, mas apenas nas áreas que você pode perceber sem se mover, então você não pode Procurar." },
-            { id: "petrificado", title: "Petrificado", sub: "Petrified", source: "Player Core pg. 439", content: "Você foi transformado em pedra. Você não pode agir, nem pode sentir nada. Você se torna um objeto com um Volume dobro do normal, CA 9, Dureza 8 e os mesmos PV atuais. Se a estátua for destruída, você morre imediatamente. Você não envelhece nem percebe a passagem do tempo." },
-            { id: "prestativo", title: "Prestativo", sub: "Helpful", source: "Player Core pg. 437", content: "Esta condição reflete a disposição de uma criatura em relação a um personagem específico. Uma criatura que é prestativa a um personagem deseja ajudar ativamente esse personagem. Ela aceitará Solicitações razoáveis desse personagem, desde que tais solicitações não sejam à custa dos objetivos ou qualidade de vida da criatura prestativa." },
-            { id: "quebrado", title: "Quebrado", sub: "Broken", source: "Player Core pg. 435", content: "Quebrado é uma condição que afeta apenas objetos. Um objeto está quebrado quando o dano reduziu seus Pontos de Vida para igual ou menos que seu Limiar de Quebra. Um objeto quebrado não pode ser usado para sua função normal, nem concede bônus — com exceção de armadura. Armadura quebrada ainda concede seu bônus de item na CA, mas também impõe uma penalidade de status na CA dependendo de sua categoria (–1 leve, –2 média, –3 pesada)." },
-            { id: "restrito", title: "Restrito", sub: "Restrained", source: "Player Core pg. 439", content: "Você está amarrado e mal consegue se mover, ou uma criatura o prendeu. Você tem as condições <span class='highlight-term'>desprevenido</span> e <span class='highlight-term'>imobilizado</span>, e não pode usar nenhuma ação de ataque ou manusear, exceto para tentar Escapar ou Forçar Abertura de suas amarras. Restrito substitui agarrado." },
-            { id: "sobrecarregado", title: "Sobrecarregado", sub: "Encumbered", source: "Player Core pg. 436", content: "Você está carregando mais peso do que consegue gerenciar. Enquanto estiver sobrecarregado, você fica <span class='highlight-term'>desajeitado 1</span> e sofre uma penalidade de 3 metros (10 pés) em todos os seus Deslocamentos. Isso não pode reduzir seu Deslocamento para menos de 1,5 metros (5 pés)." },
-            { id: "suprimido", title: "Suprimido", sub: "Suppressed", source: "Player Core pg. 440", content: "Você foi afetado por um alto volume de fogo recebido ou um ataque particularmente perigoso que o força a agir com menos eficiência para sua própria segurança. Você sofre uma penalidade de circunstância de –1 nas jogadas de ataque e uma penalidade de status de –3 metros (–10 pés) em todos os seus Deslocamentos." },
-            { id: "surdo", title: "Surdo", sub: "Deafened", source: "Player Core pg. 436", content: "Você não consegue ouvir. Você falha criticamente automaticamente em testes de Percepção que exigem que você seja capaz de ouvir. Você sofre uma penalidade de status de –2 em testes de Percepção para iniciativa e testes que envolvem som. Se você realizar uma ação que tenha o traço auditivo, deve obter sucesso em um teste simples (flat check) CD 5 ou a ação é perdida. Você é imune a efeitos auditivos." }
+            { id: "acelerado", title: "Acelerado", source: "Player Core pg. 439", content: "Você é capaz de agir mais rapidamente. Você ganha <span class='highlight-term'>1 ação adicional</span> no início do seu turno a cada rodada. Muitos efeitos que o deixam acelerado exigem que você use essa ação extra apenas de certas maneiras. Se você ficar acelerado por múltiplas fontes, você pode usar a ação extra concedida para qualquer ação única permitida por qualquer um dos efeitos que o tornaram acelerado. Como acelerado tem seu efeito no início do seu turno, você não ganha ações imediatamente se ficar acelerado durante o seu turno." },
+            { id: "agarrado", title: "Agarrado", source: "Player Core pg. 437", content: "Você está sendo segurado por outra criatura, o que lhe confere as condições <span class='highlight-term'>desprevenido</span> e <span class='highlight-term'>imobilizado</span>. Se você tentar uma ação de manusear enquanto estiver agarrado, deve obter sucesso em um teste simples (flat check) CD 5 ou a ação é perdida; role o teste após gastar a ação, mas antes de aplicar quaisquer efeitos." },
+            { id: "amigavel", title: "Amigável", source: "Player Core pg. 437", content: "Esta condição reflete a disposição de uma criatura em relação a um personagem específico, e apenas efeitos sobrenaturais (como uma magia) podem impor essa condição a um PJ. Uma criatura que é amigável a um personagem gosta desse personagem. É provável que concorde com Solicitações desse personagem, desde que sejam simples, seguras e não custem muito para serem atendidas. Se o personagem (ou um de seus aliados) usar ações hostis contra a criatura, a criatura ganha uma condição de atitude pior, dependendo da gravidade da ação hostil, conforme determinado pelo GM." },
+            { id: "assustado", title: "Assustado", source: "Player Core pg. 437", content: "Você está tomado pelo medo e luta para controlar seus nervos. A condição assustado sempre inclui um valor. Você sofre uma <span class='highlight-term'>penalidade de status igual a este valor</span> em todos os seus testes e CDs. A menos que especificado de outra forma, no final de cada um dos seus turnos, o valor da sua condição assustado diminui em 1." },
+            { id: "atordoado", title: "Atordoado", source: "Player Core pg. 439", content: "Você perdeu os sentidos. <span class='highlight-term'>Você não pode agir.</span> Atordoado geralmente inclui um valor, que indica quantas ações totais você perde, possivelmente ao longo de vários turnos, por estar atordoado. Cada vez que você recuperar ações, reduza o número que você recupera pelo seu valor de atordoado, e então reduza seu valor de atordoado pelo número de ações que você perdeu. Atordoado substitui lento. Se a duração da sua condição atordoado terminar enquanto você estiver lento, conte as ações perdidas pela condição atordoado para aquelas perdidas por estar lento." },
+            { id: "a-deriva", title: "À Deriva", source: "Player Core pg. 441", content: "Você está em um ambiente de gravidade zero (ou similar) sem meios de movimento e flutua sem apoio. Você não pode realizar ações de movimento, a menos que especifiquem que podem ser usadas em seu ambiente atual. No final do seu turno, você se move 1,5 metros na última direção em que se moveu. Você pode realizar a ação <strong>Impulsionar-se</strong> para mudar de direção e a distância movida. Uma vez que você ganhe um meio de se mover em seu ambiente, você perde esta condição. Tipicamente, uma criatura com a condição à deriva em gravidade zero também ganha as condições <span class='highlight-term'>desajeitado 1</span> e <span class='highlight-term'>desprevenido</span> enquanto estiver à deriva." },
+            { id: "caido", title: "Caído", source: "Player Core pg. 439", content: "Você está deitado no chão. Você está <span class='highlight-term'>desprevenido</span> e sofre uma penalidade de circunstância de –2 nas jogadas de ataque. As únicas ações de movimento que você pode usar enquanto está caído são Rastejar e Levantar-se. Levantar-se encerra a condição caído. Você pode Procurar Cobertura enquanto estiver caído para se abaixar e ganhar maior cobertura contra ataques à distância, mesmo se não tiver um objeto para se esconder atrás, o que lhe concede um bônus de circunstância de +4 na CA contra ataques à distância (mas você permanece desprevenido). Se você fosse derrubado enquanto estivesse Escalando ou Voando, você cai." },
+            { id: "cego", title: "Cego", source: "Player Core pg. 435", content: "Você não consegue ver. Todo terreno normal é terreno difícil para você. Você não consegue detectar nada usando a visão. Você falha criticamente automaticamente em testes de Percepção que exigem que você seja capaz de ver e, se a visão for seu único sentido preciso, você sofre uma penalidade de status de –4 em testes de Percepção. Você é imune a efeitos visuais. Cego substitui ofuscado." },
+            { id: "condenado", title: "Condenado", source: "Player Core pg. 436", content: "Sua alma foi agarrada por uma força poderosa que o chama para mais perto da morte. Condenado sempre inclui um valor. O valor de morrendo no qual você morre é reduzido pelo seu valor de condenado. Se o seu valor máximo de morrendo for reduzido a 0, você morre instantaneamente. Quando você morre, você não está mais condenado. Seu valor de condenado diminui em 1 cada vez que você tem uma noite completa de descanso." },
+            { id: "confuso", title: "Confuso", source: "Player Core pg. 435", content: "Você não está em seu juízo perfeito e ataca selvagemente. Você está <span class='highlight-term'>desprevenido</span>, não trata ninguém como seu aliado e não pode adiar, preparar ou usar reações. Você usa todas as suas ações para Golpear ou conjurar truques mágicos ofensivos em alvos aleatórios (determinados pelo GM). Se for impossível atacar, você balbucia incoerentemente. Cada vez que você sofre dano de um ataque ou magia, você pode tentar um teste simples (flat check) CD 11 para se recuperar de sua confusão e encerrar a condição." },
+            { id: "controlado", title: "Controlado", source: "Player Core pg. 436", content: "Você foi comandado ou magicamente dominado, ou teve sua vontade subverted. O controlador dita como você age e pode fazer com que você use qualquer uma de suas ações, incluindo ataques, reações ou até mesmo Adiar. O controlador geralmente não precisa gastar suas próprias ações ao controlá-lo." },
+            { id: "dano-persistente", title: "Dano Persistente", source: "Player Core pg. 439", content: "Você está sofrendo dano de um efeito contínuo. Você sofre o dano no final de cada um dos seus turnos. Depois de sofrer dano persistente, role um teste simples (flat check) CD 15 para ver se você se recupera do dano persistente. Se tiver sucesso, a condição termina. Você ou um aliado podem usar Recuperação Assistida (geralmente 2 ações) para permitir um teste simples extra imediatamente (CD 15 ou CD 10 se a ajuda for particularmente apropriada)." },
+            { id: "desajeitado", title: "Desajeitado", source: "Player Core pg. 435", content: "Seus movimentos tornam-se desajeitados e inexatos. Desajeitado sempre inclui um valor. Você sofre uma <span class='highlight-term'>penalidade de status igual ao valor da condição</span> em rolagens e CDs baseadas em Destreza, incluindo CA, testes de Reflexos, jogadas de ataque à distância e testes de perícia usando Acrobacia, Furtividade e Ladroagem." },
+            { id: "desprevenido", title: "Desprevenido", source: "Player Core pg. 438", content: "Você está distraído ou incapaz de focar toda a sua atenção na defesa. Você sofre uma <span class='highlight-term'>penalidade de circunstância de –2 na CA</span>. Alguns efeitos lhe dão a condição desprevenido apenas contra certas criaturas ou contra certos ataques. Outros — especialmente condições — podem deixá-lo desprevenido contra tudo." },
+            { id: "drenado", title: "Drenado", source: "Player Core pg. 436", content: "Sua saúde e vitalidade foram esgotadas. Drenado sempre inclui um valor. Você sofre uma <span class='highlight-term'>penalidade de status igual ao seu valor de drenado</span> em rolagens e CDs baseadas em Constituição, como testes de Fortitude. Você também perde um número de Pontos de Vida igual ao seu nível (mínimo 1) vezes o valor de drenado, e seus Pontos de Vida máximos são reduzidos na mesma quantidade. Cada vez que você tem uma noite completa de descanso, seu valor de drenado diminui em 1." },
+            { id: "enfraquecido", title: "Enfraquecido", source: "Player Core pg. 436", content: "Você está fisicamente enfraquecido. Enfraquecido sempre inclui um valor. Quando você está enfraquecido, sofre uma <span class='highlight-term'>penalidade de status igual ao valor da condição</span> em rolagens e CDs baseadas em Força, incluindo jogadas de ataque corpo a corpo baseadas em Força, jogadas de dano baseadas em Força e testes de Atletismo." },
+            { id: "enjoado", title: "Enjoado", source: "Player Core pg. 439", content: "Você se sente mal. Enjoado sempre inclui um valor. Você sofre uma <span class='highlight-term'>penalidade de status igual a este valor</span> em todos os seus testes e CDs. Você não pode ingerir nada voluntariamente enquanto estiver enjoado. Você pode gastar uma única ação vomitando em uma tentativa de se recuperar, o que permite que você tente imediatamente um teste de Fortitude contra a CD do efeito que o deixou enjoado. Em um sucesso, você reduz seu valor de enjoado em 1." },
+            { id: "escondido", title: "Escondido", source: "Player Core pg. 437", content: "Enquanto você está escondido de uma criatura, essa criatura sabe o espaço em que você está, mas não consegue dizer exatamente onde você está. Uma criatura da qual você está escondido está <span class='highlight-term'>desprevenida</span> em relação a você, e deve obter sucesso em um teste simples (flat check) CD 11 ao mirar em você com um ataque, magia ou outro efeito, ou falha em afetá-lo. Efeitos de área não estão sujeitos a este teste simples." },
+            { id: "estupefato", title: "Estupefato", source: "Player Core pg. 440", content: "Seus pensamentos e instintos estão nublados. Estupefato sempre inclui um valor. Você sofre uma <span class='highlight-term'>penalidade de status igual a este valor</span> em rolagens e CDs baseadas em Inteligência, Sabedoria e Carisma, incluindo testes de Vontade, modificadores de ataque de magia, CDs de magia e testes de perícia que usam esses modificadores. Sempre que você tentar Conjurar uma Magia enquanto estiver estupefato, a magia é interrompida a menos que você obtenha sucesso em um teste simples (flat check) com uma CD igual a 5 + seu valor de estupefato." },
+            { id: "falhando", title: "Falhando", source: "Player Core pg. 437", content: "A condição falhando sempre inclui um valor. Se você tiver equipamento falhando e realizar qualquer ação envolvendo esse equipamento, ou se você mesmo tiver a condição, deve tentar um teste simples (CD 5 + valor) no início do uso ou do turno. <br><strong>Sucesso:</strong> Age normalmente.<br><strong>Falha:</strong> Penalidade de item igual ao valor de falhando em testes e CDs.<br><strong>Falha Crítica:</strong> Objeto não funciona e perde ação; Criatura falhando usa efeito de falha e fica atordoada 1." },
+            { id: "fascinado", title: "Fascinado", source: "Player Core pg. 437", content: "Você é compelido a focar sua atenção em algo. Você sofre uma penalidade de status de –2 em testes de Percepção e perícia, e não pode usar ações com o traço concentrar, a menos que elas estejam relacionadas ao objeto de sua fascinação. Esta condição termina se uma criatura usar ações hostis contra você ou qualquer um de seus aliados." },
+            { id: "fatigado", title: "Fatigado", source: "Player Core pg. 437", content: "Você está cansado e não consegue reunir muita energia. Você sofre uma penalidade de status de –1 na CA e em testes de resistência. Você não pode usar atividades de exploração realizadas enquanto viaja. Você se recupera da fadiga após uma noite completa de descanso." },
+            { id: "ferido", title: "Ferido", source: "Player Core pg. 441", content: "Você foi gravemente ferido. Se você perder a condição morrendo e ainda não tiver a condição ferido, você se torna ferido 1. Se você já tiver a condição ferido quando perder a condição morrendo, o valor da sua condição ferido aumenta em 1. Se você ganhar a condição morrendo enquanto estiver ferido, aumente o valor da sua condição morrendo pelo seu valor de ferido. A condição ferido termina se alguém restaurar Pontos de Vida com sucesso para você usando Tratar Feridas, ou se você for restaurado ao máximo de Pontos de Vida por qualquer meio e descansar por 10 minutos." },
+            { id: "fugindo", title: "Fugindo", source: "Player Core pg. 437", content: "Você é forçado a fugir. No seu turno, você deve gastar cada uma de suas ações tentando escapar da fonte da condição fugindo o mais rápido possível (como usando ações de movimento para fugir ou abrindo portas que barram sua fuga). Você não pode Adiar ou Preparar enquanto estiver fugindo." },
+            { id: "hostil", title: "Hostil", source: "Player Core pg. 437", content: "Esta condição reflete a disposição de uma criatura em relação a um personagem específico. Uma criatura hostil busca ativamente prejudicar esse personagem. Ela não necessariamente ataca, mas não aceitará Solicitações do personagem." },
+            { id: "imobilizado", title: "Imobilizado", source: "Player Core pg. 437", content: "Você é incapaz de se mover. Você não pode usar quaisquer ações que tenham o traço movimento. Se você estiver imobilizado por algo que o segura no lugar e uma força externa o mover para fora do seu espaço, a força deve obter sucesso em um teste contra a CD do efeito que o segura no lugar." },
+            { id: "inamistoso", title: "Inamistoso", source: "Player Core pg. 441", content: "Esta condição reflete a disposição de uma criatura em relação a um personagem específico. Uma criatura que é inamistosa a um personagem não gosta e desconfia desse personagem. A criatura inamistosa não aceitará Solicitações do personagem." },
+            { id: "inconsciente", title: "Inconsciente", source: "Player Core pg. 440", content: "Você está dormindo ou foi nocauteado. Você não pode agir. Você sofre uma penalidade de status de –4 na CA, Percepção e testes de Reflexos, e tem as condições <span class='highlight-term'>cego</span> e <span class='highlight-term'>desprevenido</span>. Quando ganha esta condição, você cai <span class='highlight-term'>caído</span> e larga itens. Se estiver com 0 PV mas não morrendo, acorda naturalmente. Se tiver mais de 1 PV, acorda se sofrer dano, receber cura, for sacudido ou com barulho alto (teste de Percepção)." },
+            { id: "indiferente", title: "Indiferente", source: "Player Core pg. 438", content: "Esta condição reflete a disposição de uma criatura em relação a um personagem específico. Uma criatura que é indiferente a um personagem realmente não se importa de um jeito ou de outro com esse personagem. Assuma que a atitude de uma criatura é indiferente, a menos que especificado de outra forma." },
+            { id: "invisivel", title: "Invisível", source: "Player Core pg. 438", content: "Você não pode ser visto. Você está <span class='highlight-term'>não detectado</span> para todos. Criaturas podem Procurar para detectá-lo; se tiverem sucesso, você se torna escondido para elas até Esgueirar-se novamente. Se você se tornar invisível enquanto alguém já pode vê-lo, você começa escondido para eles (em vez de não detectado) até que obtenha sucesso ao Esgueirar-se." },
+            { id: "lento", title: "Lento", source: "Player Core pg. 439", content: "Você tem menos ações. Lento sempre inclui um valor. Quando você recuperar suas ações, reduza o número de ações recuperadas pelo seu valor de lento. Como você recupera ações no início do seu turno, você não perde ações imediatamente se ficar lento durante o seu turno." },
+            { id: "morrendo", title: "Morrendo", source: "Player Core pg. 436", content: "Você está sangrando ou à beira da morte. Enquanto tiver esta condição, você está <span class='highlight-term'>inconsciente</span>. Morrendo sempre inclui um valor e, se chegar a morrendo 4, você morre. Você deve tentar um teste de recuperação no início do seu turno a cada rodada. Sua condição morrendo aumenta em 1 se sofrer dano, ou em 2 se for crítico. Se perder a condição morrendo, ganha <span class='highlight-term'>ferido 1</span>." },
+            { id: "nao-detectado", title: "Não Detectado", source: "Player Core pg. 441", content: "Quando você está não detectado por uma criatura, essa criatura não consegue vê-lo de forma alguma, não tem ideia de qual espaço você ocupa e não pode alvejá-lo. Essa criatura está <span class='highlight-term'>desprevenida</span> em relação a você. A criatura pode tentar adivinhar qual quadrado você está para atacar (teste simples e ataque secretos)." },
+            { id: "nao-notado", title: "Não Notado", source: "Player Core pg. 441", content: "Se você está não notado por uma criatura, essa criatura não tem ideia de que você está presente. Quando você está não notado, você também está <span class='highlight-term'>não detectado</span>. Isso importa para habilidades que podem ser usadas apenas contra alvos totalmente inconscientes da sua presença." },
+            { id: "observado", title: "Observado", source: "Player Core pg. 438", content: "Qualquer coisa à vista está observada por você. Se uma criatura tomar medidas para evitar a detecção, como usando Furtividade para se Esconder, ela pode se tornar escondida ou não detectada em vez de observada. Você pode observar uma criatura apenas com seus sentidos precisos." },
+            { id: "ocultado", title: "Ocultado", source: "Player Core pg. 435", content: "Você é difícil de ser visto devido a neblina espessa ou característica obscurecedora. Você ainda pode ser observado, mas é mais difícil de ser alvejado. Uma criatura para a qual você está ocultado deve obter sucesso em um teste simples (flat check) CD 5 ao mirar em você. Se o teste falhar, você não é afetado. Efeitos de área não estão sujeitos a este teste simples." },
+            { id: "ofuscado", title: "Ofuscado", source: "Player Core pg. 436", content: "Seus olhos estão superestimulados ou sua visão está turva. Se a visão for seu único sentido preciso, todas as criaturas e objetos estão <span class='highlight-term'>ocultados</span> para você." },
+            { id: "paralisado", title: "Paralisado", source: "Player Core pg. 438", content: "Você está congelado no lugar. Você tem a condição <span class='highlight-term'>desprevenido</span> e não pode agir, exceto para Recordar Conhecimento e usar ações que exijam apenas sua mente. Seus sentidos ainda funcionam, mas apenas nas áreas que você pode perceber sem se mover, então você não pode Procurar." },
+            { id: "petrificado", title: "Petrificado", source: "Player Core pg. 439", content: "Você foi transformado em pedra. Você não pode agir, nem pode sentir nada. Você se torna um objeto com um Volume dobro do normal, CA 9, Dureza 8 e os mesmos PV atuais. Se a estátua for destruída, você morre imediatamente. Você não envelhece nem percebe a passagem do tempo." },
+            { id: "prestativo", title: "Prestativo", source: "Player Core pg. 437", content: "Esta condição reflete a disposição de uma criatura em relação a um personagem específico. Uma criatura que é prestativa a um personagem deseja ajudar ativamente esse personagem. Ela aceitará Solicitações razoáveis desse personagem, desde que tais solicitações não sejam à custa dos objetivos ou qualidade de vida da criatura prestativa." },
+            { id: "quebrado", title: "Quebrado", source: "Player Core pg. 435", content: "Quebrado é uma condição que afeta apenas objetos. Um objeto está quebrado quando o dano reduziu seus Pontos de Vida para igual ou menos que seu Limiar de Quebra. Um objeto quebrado não pode ser usado para sua função normal, nem concede bônus — com exceção de armadura. Armadura quebrada ainda concede seu bônus de item na CA, mas também impõe uma penalidade de status na CA dependendo de sua categoria (–1 leve, –2 média, –3 pesada)." },
+            { id: "restrito", title: "Restrito", source: "Player Core pg. 439", content: "Você está amarrado e mal consegue se mover, ou uma criatura o prendeu. Você tem as condições <span class='highlight-term'>desprevenido</span> e <span class='highlight-term'>imobilizado</span>, e não pode usar nenhuma ação de ataque ou manusear, exceto para tentar Escapar ou Forçar Abertura de suas amarras. Restrito substitui agarrado." },
+            { id: "sobrecarregado", title: "Sobrecarregado", source: "Player Core pg. 436", content: "Você está carregando mais peso do que consegue gerenciar. Enquanto estiver sobrecarregado, você fica <span class='highlight-term'>desajeitado 1</span> e sofre uma penalidade de 3 metros (10 pés) em todos os seus Deslocamentos. Isso não pode reduzir seu Deslocamento para menos de 1,5 metros (5 pés)." },
+            { id: "suprimido", title: "Suprimido", source: "Player Core pg. 440", content: "Você foi afetado por um alto volume de fogo recebido ou um ataque particularmente perigoso que o força a agir com menos eficiência para sua própria segurança. Você sofre uma penalidade de circunstância de –1 nas jogadas de ataque e uma penalidade de status de –3 metros (–10 pés) em todos os seus Deslocamentos." },
+            { id: "surdo", title: "Surdo", source: "Player Core pg. 436", content: "Você não consegue ouvir. Você falha criticamente automaticamente em testes de Percepção que exigem que você seja capaz de ouvir. Você sofre uma penalidade de status de –2 em testes de Percepção para iniciativa e testes que envolvem som. Se você realizar uma ação que tenha o traço auditivo, deve obter sucesso em um teste simples (flat check) CD 5 ou a ação é perdida. Você é imune a efeitos auditivos." }
         ];
 
         const grid = document.getElementById('cardsGrid');
+        const printArea = document.getElementById('printArea');
         const searchInput = document.getElementById('searchInput');
+        const printModal = document.getElementById('printConfigModal');
+        const gapRange = document.getElementById('gapRange');
+        const gapValue = document.getElementById('gapValue');
+        
+        let customBackImage = null;
+        
+        // Estado inicial
+        let printSettings = {
+            layout: 'standard', // 'standard', 'mini', 'tarot'
+            gap: 0,
+            mode: 'simple', // 'simple' or 'duplex'
+            
+            // Novos controles
+            baseW: 63.5, // mm
+            baseH: 88.9, // mm
+            cols: 3,
+            fontScale: 1,
+            
+            sizeScale: 100, // percentage
+            bleed: 10 // total mm reduction for front
+        };
 
         function setTheme(themeName) {
             document.body.setAttribute('data-theme', themeName);
         }
 
-        function renderCards(filter = "") {
-            grid.innerHTML = '';
-            const filteredData = conditionsData.filter(item => 
-                item.title.toLowerCase().includes(filter.toLowerCase()) || 
-                item.content.toLowerCase().includes(filter.toLowerCase()) ||
-                (item.sub && item.sub.toLowerCase().includes(filter.toLowerCase()))
-            );
+        // --- LÓGICA DE INTERFACE ---
+        function togglePrintModal() {
+            printModal.classList.toggle('hidden');
+        }
 
-            filteredData.forEach(item => {
-                const type = getConditionType(item.id);
-                const colors = cardTypes[type];
-                const iconSVG = icons[type];
+        function setPrintLayout(layout, btnElement) {
+            document.querySelectorAll('.layout-btn-group:last-of-type .layout-btn').forEach(btn => btn.classList.remove('active'));
+            btnElement.classList.add('active');
+            
+            printSettings.layout = layout;
+            
+            // Define dimensões BASE por tipo
+            switch(layout) {
+                case 'standard': 
+                    printSettings.baseW = 63.5; 
+                    printSettings.baseH = 88.9; 
+                    printSettings.cols = 3; 
+                    printSettings.fontScale = 1;
+                    break;
+                case 'mini': 
+                    printSettings.baseW = 45; 
+                    printSettings.baseH = 63; 
+                    printSettings.cols = 4; 
+                    printSettings.fontScale = 0.7;
+                    break;
+                case 'tarot': 
+                    printSettings.baseW = 70; 
+                    printSettings.baseH = 120; 
+                    printSettings.cols = 2; 
+                    printSettings.fontScale = 1.2;
+                    break;
+            }
+            
+            // Recalcula tudo
+            updateCalculatedSizes();
+        }
 
-                const card = document.createElement('div');
-                card.className = "game-card";
-                
-                card.style.setProperty('--type-color', colors.color);
-                card.style.setProperty('--type-color-dark', colors.dark);
-                card.style.setProperty('--type-color-alpha', colors.alpha);
-                card.style.setProperty('--type-color-dim', colors.dark);
+        function updateDimensions(val, type) {
+            if (type === 'scale') {
+                printSettings.sizeScale = parseFloat(val);
+                document.getElementById('scaleValueDisplay').textContent = val + '%';
+            } else if (type === 'bleed') {
+                printSettings.bleed = parseFloat(val);
+                document.getElementById('bleedValueDisplay').textContent = val + 'mm';
+            }
+            updateCalculatedSizes();
+        }
 
-                card.innerHTML = `
+        function updateCalculatedSizes() {
+            const root = document.documentElement;
+            
+            // 1. Calcula tamanho do Verso (Base * Escala)
+            const scaleFactor = printSettings.sizeScale / 100;
+            const finalBackW = printSettings.baseW * scaleFactor;
+            const finalBackH = printSettings.baseH * scaleFactor;
+            
+            // 2. Calcula tamanho da Frente (Verso - Sangria)
+            // Sangria não deve deixar a carta negativa
+            const finalFrontW = Math.max(10, finalBackW - printSettings.bleed);
+            const finalFrontH = Math.max(10, finalBackH - printSettings.bleed);
+
+            // Aplica variáveis
+            root.style.setProperty('--print-card-w', `${finalBackW}mm`);
+            root.style.setProperty('--print-card-h', `${finalBackH}mm`);
+            
+            root.style.setProperty('--print-card-w-front', `${finalFrontW}mm`);
+            root.style.setProperty('--print-card-h-front', `${finalFrontH}mm`);
+
+            root.style.setProperty('--print-cols', printSettings.cols);
+            root.style.setProperty('--print-font-scale', printSettings.fontScale * scaleFactor);
+        }
+
+        function setPrintMode(mode, btnElement) {
+            document.querySelectorAll('#btnSimple, #btnDuplex').forEach(btn => btn.classList.remove('active'));
+            btnElement.classList.add('active');
+            
+            printSettings.mode = mode;
+            const warning = document.getElementById('duplexWarning');
+            const backSection = document.getElementById('backImageSection');
+            
+            if(mode === 'duplex') {
+                warning.classList.remove('hidden');
+                backSection.classList.remove('opacity-50', 'pointer-events-none');
+            } else {
+                warning.classList.add('hidden');
+                backSection.classList.add('opacity-50', 'pointer-events-none');
+            }
+        }
+
+        function updateGap(val) {
+            printSettings.gap = val;
+            document.documentElement.style.setProperty('--print-gap', val + 'mm');
+            gapValue.textContent = val;
+        }
+
+        // --- BACK IMAGE LOGIC ---
+        const backImageInput = document.getElementById('backImageInput');
+        backImageInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                customBackImage = event.target.result;
+                document.getElementById('backPreviewImg').src = customBackImage;
+                document.getElementById('backPreviewBox').classList.remove('hidden');
+                document.getElementById('fileLabel').textContent = file.name;
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function clearBackImage() {
+            customBackImage = null;
+            backImageInput.value = '';
+            document.getElementById('backPreviewBox').classList.add('hidden');
+            document.getElementById('fileLabel').textContent = "Escolher arquivo...";
+        }
+
+        function getConditionType(id) {
+            const types = {
+                'movimento': ['acelerado', 'lento', 'imobilizado', 'fugindo', 'a-deriva', 'caido', 'sobrecarregado', 'restrito'],
+                'sentidos': ['cego', 'invisivel', 'ocultado', 'escondido', 'nao-detectado', 'surdo', 'ofuscado', 'observado', 'nao-notado'],
+                'mental': ['confuso', 'fascinado', 'assustado', 'estupefato', 'atordoado', 'controlado', 'indiferente', 'hostil', 'amigavel', 'inamistoso', 'prestativo'],
+                'vida': ['morrendo', 'condenado', 'inconsciente', 'ferido', 'drenado', 'dano-persistente', 'enfraquecido', 'enjoado', 'fatigado', 'petrificado'],
+                'defesa': ['desprevenido', 'agarrado', 'quebrado', 'suprimido'],
+                'especial': ['falhando']
+            };
+            for (const [type, ids] of Object.entries(types)) { if (ids.includes(id)) return type; }
+            return 'especial';
+        }
+
+        function createCardHTML(item) {
+            const type = getConditionType(item.id);
+            const colors = cardTypes[type];
+            const iconSVG = icons[type];
+
+            return `
+                <div class="game-card" style="--type-color: ${colors.color}; --type-color-dark: ${colors.dark}; --type-color-alpha: ${colors.alpha}; --type-color-dim: ${colors.dark}">
                     <div class="card-header">
                         <div>
                             <h2 class="card-title">${item.title}</h2>
-                            <p class="text-[0.6rem] font-sans opacity-80 uppercase tracking-widest" style="font-weight: 600;">${item.sub}</p>
+                            <p class="text-[0.6rem] font-sans opacity-80 uppercase tracking-widest" style="font-weight: 600;">${item.sub || ''}</p>
                         </div>
                         <div class="card-type-icon text-white">
                             <svg class="w-full h-full" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
@@ -196,14 +426,107 @@
                         <span>ID: ${item.id.substring(0,3).toUpperCase()}</span>
                         <span>${item.source}</span>
                     </div>
+                </div>
+            `;
+        }
+
+        function createBackCardHTML(item) {
+            const type = getConditionType(item.id);
+            const colors = cardTypes[type];
+            
+            if (customBackImage) {
+                return `
+                    <div class="game-card card-back-custom-print" style="--type-color: ${colors.color}; --type-color-alpha: ${colors.alpha}; background: none;">
+                        <img src="${customBackImage}" style="width: 100%; height: 100%; object-fit: cover; border-radius: var(--card-radius);">
+                    </div>
                 `;
-                grid.appendChild(card);
+            }
+
+            return `
+                <div class="game-card" style="--type-color: ${colors.color}; --type-color-alpha: ${colors.alpha}">
+                    <div class="card-back">
+                        <div class="back-logo">
+                            PATHFINDER<br>
+                            <span class="text-sm">2E CONDITIONS</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // --- RENDERIZAÇÃO DA TELA (SIMPLES) ---
+        function renderScreenCards(filter = "") {
+            const grid = document.getElementById('cardsGrid');
+            grid.innerHTML = '';
+            
+            const filteredData = conditionsData.filter(item => 
+                item.title.toLowerCase().includes(filter.toLowerCase()) || 
+                item.content.toLowerCase().includes(filter.toLowerCase()) ||
+                (item.sub && item.sub.toLowerCase().includes(filter.toLowerCase()))
+            );
+
+            filteredData.forEach(item => {
+                grid.innerHTML += createCardHTML(item);
             });
         }
 
-        searchInput.addEventListener('input', (e) => renderCards(e.target.value));
+        // --- GERAÇÃO DE IMPRESSÃO INTELIGENTE ---
+        function prepareAndPrint() {
+            printArea.innerHTML = '';
+            
+            const filteredData = conditionsData.filter(item => 
+                item.title.toLowerCase().includes(searchInput.value.toLowerCase()) || 
+                item.content.toLowerCase().includes(searchInput.value.toLowerCase()) ||
+                (item.sub && item.sub.toLowerCase().includes(searchInput.value.toLowerCase()))
+            );
+
+            const cardsPerPage = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--print-cols')) * 3; 
+            const cols = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--print-cols'));
+            const pageSize = cols * 3; 
+            const totalPages = Math.ceil(filteredData.length / pageSize);
+
+            for (let i = 0; i < totalPages; i++) {
+                const pageItems = filteredData.slice(i * pageSize, (i + 1) * pageSize);
+                
+                // 1. Frente
+                const pageContainer = document.createElement('div');
+                pageContainer.className = 'grid-container page-break';
+                pageItems.forEach(item => { pageContainer.innerHTML += createCardHTML(item); });
+                printArea.appendChild(pageContainer);
+
+                // 2. Verso (Duplex)
+                if (printSettings.mode === 'duplex') {
+                    const backContainer = document.createElement('div');
+                    backContainer.className = 'grid-container page-break';
+                    
+                    for (let r = 0; r < pageItems.length; r += cols) {
+                        const row = pageItems.slice(r, r + cols);
+                        while(row.length < cols) { row.push(null); }
+                        const mirroredRow = row.reverse();
+
+                        mirroredRow.forEach(item => {
+                            if(item) {
+                                backContainer.innerHTML += createBackCardHTML(item);
+                            } else {
+                                backContainer.innerHTML += `<div style="width:var(--print-card-w); height:var(--print-card-h);"></div>`;
+                            }
+                        });
+                    }
+                    printArea.appendChild(backContainer);
+                }
+            }
+
+            togglePrintModal();
+            setTimeout(() => window.print(), 500);
+        }
+
+        searchInput.addEventListener('input', (e) => renderScreenCards(e.target.value));
         
-        renderCards();
+        // Inicializa
+        renderScreenCards();
+        // Inicializa layout e cálculos
+        setPrintLayout('standard', document.querySelector('.layout-btn.active'));
+        setPrintMode('simple', document.getElementById('btnSimple'));
     </script>
 </body>
 </html>

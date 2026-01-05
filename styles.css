@@ -41,14 +41,14 @@
     --font-title: 'Orbitron', sans-serif;
     --font-body: 'Rajdhani', sans-serif;
     
-    --header-text: #e0f2ff;
+    --header-text: var(--type-color);
     --header-deco: none;
     
     --body-bg: #0b1221;
     --body-text: #e0f2ff;
     
     --footer-bg: #050a14;
-    --footer-text: #e0f2ff;
+    --footer-text: var(--type-color);
     --footer-border: 1px solid var(--type-color-dim);
     
     --watermark-opacity: 0.1;
@@ -83,9 +83,16 @@
 
 /* VARIÁVEIS GLOBAIS DE IMPRESSÃO (Padrão Inicial) */
 :root {
+    /* Tamanhos BASE (Verso/Sangria - O maior tamanho) */
     --print-card-w: 63.5mm;
     --print-card-h: 88.9mm;
-    --print-gap: 2mm;
+    
+    /* Novos Tamanhos para a FRENTE (Menores para margem de segurança) */
+    /* Estes valores padrão serão atualizados pelo JS conforme o layout */
+    --print-card-w-front: 53.5mm; /* 63.5 - 10mm */
+    --print-card-h-front: 78.9mm; /* 88.9 - 10mm */
+
+    --print-gap: 0mm; /* Gap padrão 0 para corte guilhotina */
     --print-cols: 3;
     --print-font-scale: 1;
 }
@@ -344,11 +351,11 @@ body {
     border-color: #0284c7; 
 }
 
-/* --- MODO IMPRESSÃO (Agora Dinâmico) --- */
+/* --- MODO IMPRESSÃO (Dinâmico com Sangria) --- */
 @media print {
     @page {
         size: A4;
-        margin: 5mm;
+        margin: 10mm; /* Margem ajustada */
     }
 
     body {
@@ -365,6 +372,7 @@ body {
 
     .grid-container {
         display: grid !important;
+        /* A grade usa o tamanho MAIOR (Verso) para definir as células */
         grid-template-columns: repeat(var(--print-cols), var(--print-card-w)) !important;
         grid-auto-rows: var(--print-card-h) !important;
         gap: var(--print-gap) !important; 
@@ -372,27 +380,62 @@ body {
         width: fit-content;
         padding-top: 5mm;
         justify-content: center;
+        /* Centraliza itens menores (frentes) dentro das células */
+        justify-items: center;
+        align-items: center;
     }
 
+    /* ESTILO FRENTE DA CARTA (Menor que a grade) */
     .game-card {
         margin: 0;
         box-shadow: none !important;
+        
+        /* Borda tracejada fina para guiar o corte da frente */
         border: 1px dashed #94a3b8 !important; 
         border-radius: 2mm !important; 
+        
         page-break-inside: avoid;
         break-inside: avoid;
         transform: none !important;
         background-color: white !important;
         
-        /* Aplica as dimensões dinâmicas */
-        width: var(--print-card-w) !important;
-        height: var(--print-card-h) !important;
+        /* Usa as dimensões MENORES */
+        width: var(--print-card-w-front) !important;
+        height: var(--print-card-h-front) !important;
+        
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
 
+    /* ESTILO VERSO CUSTOMIZADO (Sangria Total) */
+    .card-back-custom-print {
+        /* O verso preenche 100% da célula da grade (o tamanho maior) */
+        width: 100% !important;
+        height: 100% !important;
+        border: none !important;
+        border-radius: 0 !important;
+    }
+    
+    .card-back-custom-print img {
+        border-radius: 0 !important;
+    }
+
+    /* Cabeçalho colorido */
     .card-header {
         background: var(--type-color) !important;
         color: white !important;
-        border-bottom: none !important;
+        border-bottom: 2px solid rgba(0,0,0,0.1) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    /* Linha decorativa */
+    .card-header::after {
+        content: '';
+        position: absolute;
+        bottom: 0; left: 0; width: 100%; height: 2px;
+        background: rgba(255,255,255,0.3) !important;
+        display: block !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
     }
@@ -400,19 +443,38 @@ body {
     .card-title {
         font-family: 'Teko', sans-serif !important;
         color: white !important;
-        /* Escala a fonte se a carta diminuir */
+        text-shadow: 0 2px 0 rgba(0,0,0,0.2) !important;
         font-size: calc(1.4rem * var(--print-font-scale)) !important; 
     }
     
-    .card-body {
-        background-color: white !important;
-        color: black !important;
-        font-family: 'Inter', sans-serif !important;
-        font-size: calc(6.5pt * var(--print-font-scale)) !important;
+    .card-type-icon {
+        background: rgba(255,255,255,0.2) !important;
+        border: none !important;
+        box-shadow: inset 0 1px 3px rgba(0,0,0,0.2) !important;
+        color: white !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
     
+    .card-body {
+        background-color: #f8fafc !important;
+        color: #334155 !important;
+        font-family: 'Inter', sans-serif !important;
+        font-size: calc(6.5pt * var(--print-font-scale)) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    .watermark {
+        opacity: 0.05 !important;
+        color: var(--type-color) !important;
+        display: block !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
     .card-footer {
-        background-color: #f1f5f9 !important;
+        background-color: #e2e8f0 !important;
         color: #64748b !important;
         border-top: 1px solid #cbd5e1 !important;
         -webkit-print-color-adjust: exact;
@@ -420,30 +482,93 @@ body {
     }
     
     .highlight-term {
-        color: black !important;
+        color: var(--type-color-dark) !important;
         font-weight: 800 !important;
-        background: none !important;
-        text-decoration: underline;
+        background-color: rgba(0,0,0,0.05) !important;
+        padding: 0 2px !important;
+        border-radius: 2px !important;
+        text-decoration: none !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
     }
 
+    /* Remove marcas de corte da frente para não poluir o verso sangrado */
     .game-card::before {
-        content: '';
-        position: absolute;
-        top: -1px; left: -1px; right: -1px; bottom: -1px;
-        border: 1px solid transparent;
-        background: 
-            linear-gradient(to right, black 2px, transparent 2px) 0 0,
-            linear-gradient(to bottom, black 2px, transparent 2px) 0 0,
-            linear-gradient(to left, black 2px, transparent 2px) 100% 0,
-            linear-gradient(to bottom, black 2px, transparent 2px) 100% 0,
-            linear-gradient(to right, black 2px, transparent 2px) 0 100%,
-            linear-gradient(to top, black 2px, transparent 2px) 0 100%,
-            linear-gradient(to left, black 2px, transparent 2px) 100% 100%,
-            linear-gradient(to top, black 2px, transparent 2px) 100% 100%;
-        background-repeat: no-repeat;
-        background-size: 4px 4px;
-        pointer-events: none;
-        z-index: 50;
-        opacity: 0.5;
+        display: none !important;
+    }
+}
+
+.card-back {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+    width: 100%;
+    background-color: var(--card-bg);
+    border: var(--card-border);
+    border-radius: var(--card-radius);
+    position: relative;
+    overflow: hidden;
+    background-image: 
+        radial-gradient(circle at center, var(--type-color-alpha) 0%, transparent 60%);
+}
+
+[data-theme="cyberpunk"] .card-back {
+    background-image: 
+        linear-gradient(45deg, transparent 48%, var(--type-color) 50%, transparent 52%),
+        linear-gradient(-45deg, transparent 48%, var(--type-color) 50%, transparent 52%);
+    background-size: 20px 20px;
+    opacity: 0.8;
+}
+
+[data-theme="boardgame"] .card-back {
+    background-color: var(--navbar-bg); 
+    border: 4px solid white;
+    outline: 1px solid #ccc;
+}
+
+[data-theme="classic"] .card-back {
+    border: 4px double #5d4037;
+    background-image: repeating-linear-gradient(45deg, #fdf5e6 0, #fdf5e6 10px, #efebe9 10px, #efebe9 20px);
+}
+
+.back-logo {
+    font-family: var(--font-title);
+    font-size: 2rem;
+    font-weight: bold;
+    text-transform: uppercase;
+    color: var(--header-text);
+    text-align: center;
+    z-index: 10;
+    padding: 1rem;
+    border: 2px solid currentColor;
+    background: rgba(0,0,0,0.5);
+    transform: rotate(-45deg);
+}
+
+[data-theme="boardgame"] .back-logo {
+    background: white;
+    color: #0f172a;
+    border: none;
+    transform: none;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+}
+
+.page-break {
+    page-break-after: always;
+    break-after: page;
+    height: 0;
+    width: 100%;
+    display: block;
+    clear: both;
+}
+
+/* Verso Padrão na Impressão */
+@media print {
+    .card-back {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        box-shadow: none !important;
     }
 }
