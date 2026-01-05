@@ -1,0 +1,449 @@
+/* --- SISTEMA DE TEMAS (CSS VARIABLES) --- */
+
+/* TEMA 1: BOARDGAME MODERNO (Padrão) */
+[data-theme="boardgame"] {
+    --bg-app: #e2e8f0;
+    --navbar-bg: linear-gradient(135deg, #0f172a 0%, #334155 100%);
+    
+    --card-bg: white;
+    --card-border: 1px solid #cbd5e1;
+    --card-radius: 3.5mm;
+    --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2);
+    --hover-transform: scale(1.05) rotate(1deg);
+    
+    --font-title: 'Teko', sans-serif;
+    --font-body: 'Inter', sans-serif;
+    
+    --header-text: white;
+    --header-deco: block;
+    
+    --body-bg: #f8fafc;
+    --body-text: #334155;
+    
+    --footer-bg: #e2e8f0;
+    --footer-text: #64748b;
+    --footer-border: 1px solid #cbd5e1;
+    
+    --watermark-opacity: 0.05;
+}
+
+/* TEMA 2: CYBERPUNK NEON */
+[data-theme="cyberpunk"] {
+    --bg-app: #050a14;
+    --navbar-bg: #0a0f1c;
+    
+    --card-bg: #0f172a;
+    --card-border: 2px solid var(--type-color);
+    --card-radius: 2mm;
+    --card-shadow: 0 0 15px var(--type-color-alpha);
+    --hover-transform: scale(1.05);
+    
+    --font-title: 'Orbitron', sans-serif;
+    --font-body: 'Rajdhani', sans-serif;
+    
+    --header-text: #e0f2ff;
+    --header-deco: none;
+    
+    --body-bg: #0b1221;
+    --body-text: #e0f2ff;
+    
+    --footer-bg: #050a14;
+    --footer-text: #e0f2ff;
+    --footer-border: 1px solid var(--type-color-dim);
+    
+    --watermark-opacity: 0.1;
+}
+
+/* TEMA 3: RPG CLÁSSICO (PERGAMINHO) */
+[data-theme="classic"] {
+    --bg-app: #2c241b;
+    --navbar-bg: #3e2723;
+    
+    --card-bg: #fdf5e6; 
+    --card-border: 4px double #5d4037;
+    --card-radius: 1mm;
+    --card-shadow: 2px 2px 5px rgba(0,0,0,0.5);
+    --hover-transform: translateY(-5px);
+    
+    --font-title: 'Cinzel', serif;
+    --font-body: 'Crimson Text', serif;
+    
+    --header-text: #3e2723;
+    --header-deco: none;
+    
+    --body-bg: transparent;
+    --body-text: #212121;
+    
+    --footer-bg: #efebe9;
+    --footer-text: #5d4037;
+    --footer-border: 1px solid #d7ccc8;
+    
+    --watermark-opacity: 0.08;
+}
+
+/* VARIÁVEIS GLOBAIS DE IMPRESSÃO (Padrão Inicial) */
+:root {
+    --print-card-w: 63.5mm;
+    --print-card-h: 88.9mm;
+    --print-gap: 2mm;
+    --print-cols: 3;
+    --print-font-scale: 1;
+}
+
+/* --- ESTILOS GERAIS --- */
+body {
+    background-color: var(--bg-app);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-family: var(--font-body);
+    transition: background 0.3s ease;
+}
+
+.navbar {
+    background: var(--navbar-bg);
+    width: 100%;
+    padding: 1.5rem;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    color: white;
+    margin-bottom: 2rem;
+    transition: background 0.3s ease;
+}
+
+/* --- O CARD --- */
+.game-card {
+    width: 63.5mm;
+    height: 88.9mm;
+    background-color: var(--card-bg);
+    border-radius: var(--card-radius);
+    box-shadow: var(--card-shadow);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), border-color 0.3s, box-shadow 0.3s;
+    border: var(--card-border);
+}
+
+.screen-view .game-card:hover {
+    transform: var(--hover-transform);
+    z-index: 20;
+}
+
+/* Header */
+.card-header {
+    background-color: var(--header-bg-dynamic, var(--type-color)); 
+    color: var(--header-text);
+    padding: 8px 12px;
+    height: 16%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2px solid rgba(0,0,0,0.1);
+    position: relative;
+}
+
+[data-theme="cyberpunk"] .card-header {
+    background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 100%);
+    border-bottom: 1px solid var(--type-color);
+    text-shadow: 0 0 5px currentColor;
+}
+
+[data-theme="classic"] .card-header {
+    background: transparent;
+    border-bottom: 2px solid #5d4037;
+}
+
+[data-theme="boardgame"] .card-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; width: 100%; height: 2px;
+    background: rgba(255,255,255,0.3);
+    display: var(--header-deco);
+}
+
+.card-title {
+    font-family: var(--font-title);
+    font-size: 1.4rem;
+    line-height: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+[data-theme="classic"] .card-title {
+    font-weight: 900;
+    font-size: 1.1rem; 
+}
+
+.card-type-icon {
+    width: 28px;
+    height: 28px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 6px;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.2);
+}
+
+[data-theme="classic"] .card-type-icon {
+    background: transparent;
+    border: 1px solid #5d4037;
+    color: #5d4037;
+    box-shadow: none;
+    border-radius: 50%;
+}
+
+/* Corpo */
+.card-body {
+    flex-grow: 1;
+    padding: 10px;
+    font-size: 0.55rem;
+    line-height: 1.35;
+    color: var(--body-text);
+    position: relative;
+    background-color: var(--body-bg);
+    display: flex;
+    flex-direction: column;
+    text-align: justify;
+    font-family: var(--font-body);
+    overflow: hidden;
+}
+
+[data-theme="classic"] .card-body {
+    font-size: 0.65rem;
+}
+
+/* Marca d'água */
+.watermark {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 80%;
+    height: 80%;
+    opacity: var(--watermark-opacity);
+    pointer-events: none;
+    z-index: 0;
+    color: var(--type-color);
+}
+
+[data-theme="classic"] .watermark { color: #3e2723; }
+
+.card-content {
+    position: relative;
+    z-index: 1;
+}
+
+/* Destaques de Texto */
+.highlight-term {
+    font-weight: 800;
+    color: var(--type-color-dark);
+    background-color: rgba(0,0,0,0.05);
+    padding: 0 2px;
+    border-radius: 2px;
+}
+
+[data-theme="cyberpunk"] .highlight-term {
+    color: var(--type-color);
+    background: transparent;
+    text-shadow: 0 0 2px currentColor;
+}
+
+/* Rodapé */
+.card-footer {
+    height: 18px;
+    background-color: var(--footer-bg);
+    border-top: var(--footer-border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 10px;
+    font-size: 0.45rem;
+    color: var(--footer-text);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    font-family: var(--font-title);
+}
+
+/* MODAL DE CONFIGURAÇÃO */
+.modal-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: var(--card-bg);
+    color: var(--body-text);
+    padding: 2rem;
+    border-radius: 1rem;
+    max-width: 500px;
+    width: 90%;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+    border: 1px solid var(--card-border);
+    font-family: var(--font-body);
+}
+
+.modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 0.5rem;
+}
+
+.modal-title {
+    font-family: var(--font-title);
+    font-size: 1.5rem;
+    font-weight: bold;
+    text-transform: uppercase;
+}
+
+.config-group {
+    margin-bottom: 1.5rem;
+}
+
+.config-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+
+.layout-btn-group {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.layout-btn {
+    flex: 1;
+    padding: 0.5rem;
+    border: 1px solid #ccc;
+    background: #f0f0f0;
+    cursor: pointer;
+    border-radius: 0.25rem;
+    font-size: 0.8rem;
+    text-align: center;
+    transition: all 0.2s;
+}
+
+.layout-btn:hover { background: #e0e0e0; }
+.layout-btn.active { 
+    background: #0ea5e9; 
+    color: white; 
+    border-color: #0284c7; 
+}
+
+/* --- MODO IMPRESSÃO (Agora Dinâmico) --- */
+@media print {
+    @page {
+        size: A4;
+        margin: 5mm;
+    }
+
+    body {
+        background: white !important;
+        display: block;
+        font-size: 0;
+        margin: 0;
+        padding: 0;
+    }
+
+    .no-print {
+        display: none !important;
+    }
+
+    .grid-container {
+        display: grid !important;
+        grid-template-columns: repeat(var(--print-cols), var(--print-card-w)) !important;
+        grid-auto-rows: var(--print-card-h) !important;
+        gap: var(--print-gap) !important; 
+        margin: 0 auto;
+        width: fit-content;
+        padding-top: 5mm;
+        justify-content: center;
+    }
+
+    .game-card {
+        margin: 0;
+        box-shadow: none !important;
+        border: 1px dashed #94a3b8 !important; 
+        border-radius: 2mm !important; 
+        page-break-inside: avoid;
+        break-inside: avoid;
+        transform: none !important;
+        background-color: white !important;
+        
+        /* Aplica as dimensões dinâmicas */
+        width: var(--print-card-w) !important;
+        height: var(--print-card-h) !important;
+    }
+
+    .card-header {
+        background: var(--type-color) !important;
+        color: white !important;
+        border-bottom: none !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    .card-title {
+        font-family: 'Teko', sans-serif !important;
+        color: white !important;
+        /* Escala a fonte se a carta diminuir */
+        font-size: calc(1.4rem * var(--print-font-scale)) !important; 
+    }
+    
+    .card-body {
+        background-color: white !important;
+        color: black !important;
+        font-family: 'Inter', sans-serif !important;
+        font-size: calc(6.5pt * var(--print-font-scale)) !important;
+    }
+    
+    .card-footer {
+        background-color: #f1f5f9 !important;
+        color: #64748b !important;
+        border-top: 1px solid #cbd5e1 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+    
+    .highlight-term {
+        color: black !important;
+        font-weight: 800 !important;
+        background: none !important;
+        text-decoration: underline;
+    }
+
+    .game-card::before {
+        content: '';
+        position: absolute;
+        top: -1px; left: -1px; right: -1px; bottom: -1px;
+        border: 1px solid transparent;
+        background: 
+            linear-gradient(to right, black 2px, transparent 2px) 0 0,
+            linear-gradient(to bottom, black 2px, transparent 2px) 0 0,
+            linear-gradient(to left, black 2px, transparent 2px) 100% 0,
+            linear-gradient(to bottom, black 2px, transparent 2px) 100% 0,
+            linear-gradient(to right, black 2px, transparent 2px) 0 100%,
+            linear-gradient(to top, black 2px, transparent 2px) 0 100%,
+            linear-gradient(to left, black 2px, transparent 2px) 100% 100%,
+            linear-gradient(to top, black 2px, transparent 2px) 100% 100%;
+        background-repeat: no-repeat;
+        background-size: 4px 4px;
+        pointer-events: none;
+        z-index: 50;
+        opacity: 0.5;
+    }
+}
